@@ -199,8 +199,6 @@ void Modifiers::updateModState() {
         rows[i].label->setEnabled(enabled[i]);
         rows[i].edit->setEnabled(enabled[i]);
         rows[i].btn->setEnabled(enabled[i]);
-        if (!enabled[i])
-            rows[i].edit->setText("");
     }
 }
 
