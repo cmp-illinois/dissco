@@ -96,6 +96,36 @@ if(WIN32)
     # SHChangeNotify (shell32) + Reg* (advapi32) — usually pulled in implicitly,
     # but list them so non-default Windows toolchains link cleanly.
     target_link_libraries(LASSIE PRIVATE shell32 advapi32)
+
+
+    # force unicode entrypoint (wWinMain)
+    if(MSVC OR CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
+        target_link_options(LASSIE PRIVATE /ENTRY:wWinMainCRTStartup)
+    endif()
+
+    # NECESSARY for Qt dlls to be found by windows
+    find_program(WINDEPLOYQT_EXE NAMES windeployqt windeployqt6
+        HINTS "${Qt6_DIR}/../../../bin"
+    )
+    if(WINDEPLOYQT_EXE)
+        add_custom_command(TARGET LASSIE POST_BUILD
+            COMMAND "${WINDEPLOYQT_EXE}"
+                    --verbose 0
+                    --no-compiler-runtime
+                    --no-translations
+                    --no-system-d3d-compiler
+                    --no-quick-import
+                    "$<TARGET_FILE:LASSIE>"
+            COMMENT "Deploying Qt runtime DLLs next to LASSIE.exe"
+            VERBATIM
+        )
+    else()
+        message(WARNING
+            "windeployqt not found — LASSIE.exe will fail to start with "
+            "\"Qt6Widgets.dll not found\". Run windeployqt manually from "
+            "your Qt install's bin/ directory against the built .exe, or "
+            "add that bin/ directory to PATH.")
+    endif()
 endif()
 
 install(TARGETS LASSIE
