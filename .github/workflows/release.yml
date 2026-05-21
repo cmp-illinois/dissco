@@ -13,15 +13,12 @@ on:
 permissions:
   contents: write
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
-
 jobs:
   macos:
     name: macOS DMG
     runs-on: macos-14
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install dependencies
         run: |
@@ -48,7 +45,7 @@ jobs:
           echo "path=${dmg}" >> "$GITHUB_OUTPUT"
           echo "name=$(basename "${dmg}")" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: ${{ steps.artifact.outputs.name }}
           path: ${{ steps.artifact.outputs.path }}
@@ -59,7 +56,7 @@ jobs:
     # downstream distros than ones built on 24.04+.
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install system dependencies
         run: |
@@ -73,7 +70,7 @@ jobs:
             libglu1-mesa-dev libxrender-dev libxi-dev libxkbfile-dev
 
       - name: Install Qt 6.8
-        uses: jurplel/install-qt-action@v4
+        uses: jurplel/install-qt-action@v5
         with:
           # DISSCO's source uses Qt::StringLiterals (6.4+) and project docs
           # require >= 6.8. Ubuntu 22.04's apt qt6-base-dev is 6.2 — too old.
@@ -108,7 +105,7 @@ jobs:
           echo "path=${img}" >> "$GITHUB_OUTPUT"
           echo "name=$(basename "${img}")" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: ${{ steps.artifact.outputs.name }}
           path: ${{ steps.artifact.outputs.path }}
@@ -119,7 +116,7 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
           path: dist
           merge-multiple: true
