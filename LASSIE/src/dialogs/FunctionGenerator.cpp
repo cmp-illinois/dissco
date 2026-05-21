@@ -487,8 +487,7 @@ void FunctionGenerator::setupUi()
         // <Offset>
         thisElement = thisElement->getNextElementSibling();
         ui->makeSieveOffsetEdit->setText(QString::fromStdString(getFunctionString(thisElement)));
-    }
-    else if (functionName == "MakeFilter") {
+    } else if (functionName == "MakeFilter") {
         selectComboItem(functionName);
         // Parse <Type>
         DOMElement* thisElement = functionNameElement->getNextElementSibling();
@@ -509,8 +508,7 @@ void FunctionGenerator::setupUi()
         // Parse <dBGain>
         thisElement = thisElement->getNextElementSibling();
         ui->makeFilterDBEdit->setText(QString::fromStdString(getFunctionString(thisElement)));
-    }
-    else if (functionName == "ValuePick") {
+    } else if (functionName == "ValuePick") {
         int index = -1;
         for (int i = 0; i < ui->functionOptions->count(); ++i) {
             if (ui->functionOptions->itemText(i).toStdString() == functionName) {
@@ -619,6 +617,11 @@ void FunctionGenerator::setupUi()
         // <File>
         DOMElement* thisElement = functionNameElement->getNextElementSibling();
         ui->readFilFileEdit->setText(QString::fromStdString(getFunctionString(thisElement)));
+    } else if (functionName == "ReadSPAFile") {
+        selectComboItem(functionName);
+        // <File>
+        DOMElement* thisElement = functionNameElement->getNextElementSibling();
+        ui->readSpaFileEdit->setText(QString::fromStdString(getFunctionString(thisElement)));
     } else if (functionName == "ChooseL") {
         selectComboItem(functionName);
         // <Entry>
@@ -632,7 +635,7 @@ void FunctionGenerator::setupUi()
         // <Scale>
         thisElement = thisElement->getNextElementSibling();
         ui->envLibScalingEdit->setText(QString::fromStdString(getFunctionString(thisElement)));
-    } else if (functionName == "Select") {
+    } else if (functionName == "Select" /*not working*/) {
         selectComboItem("Select");
 
         // Clear any default nodes added by handleFunctionChanged
@@ -711,7 +714,7 @@ void FunctionGenerator::setupUi()
 
         ui->selectIndexEdit->setText(
             QString::fromStdString(getFunctionString(indexElement)));
-    } else if (functionName == "Stochos") {
+    } else if (functionName == "Stochos" /*not working*/) {
         selectComboItem("Stochos");
         // selectComboItem triggers handleFunctionChanged which sets RANGE_DISTRIB and clears nodes
 
@@ -952,7 +955,7 @@ void FunctionGenerator::setupUi()
         DOMElement* thisElement = functionNameElement->getNextElementSibling();
         ui->fibEdit->setText(QString::fromStdString(getFunctionString(thisElement)));
     } 
-    //not work: stochos, select, Decay, SPA, REV_Simple, REV_Medium, REV_Advanced, 
+    //not work: stochos, select, Decay 
 }
 
 std::string FunctionGenerator::getFunctionString(DOMElement* _thisFunctionElement){
