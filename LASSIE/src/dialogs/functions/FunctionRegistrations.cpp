@@ -6,10 +6,12 @@
 #include "FibonacciFunction.hpp"
 #include "InverseFunction.hpp"
 #include "LNFunction.hpp"
+#include "RandomFunction.hpp"
 
 void registerAllFunctions() {
     auto& r = FunctionRegistry::instance();
     r.registerType<InverseFunction>();
     r.registerType<LNFunction>();
     r.registerType<FibonacciFunction>();
+    r.registerType<RandomFunction>();
 }
