@@ -5,6 +5,7 @@
 #include "FunctionRegistry.hpp"
 
 #include "impl/ChooseLFunction.hpp"
+#include "impl/DecayFunction.hpp"
 #include "impl/EnvLibFunction.hpp"
 #include "impl/FibonacciFunction.hpp"
 #include "impl/InverseFunction.hpp"
@@ -48,4 +49,5 @@ void registerAllFunctions() {
     r.registerType<AvailableEduFunction>();
     r.registerType<PreviousChildDurationFunction>();
     r.registerType<CurrentLayerFunction>();
+    r.registerType<DecayFunction>();
 }
