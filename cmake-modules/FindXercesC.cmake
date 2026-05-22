@@ -139,13 +139,6 @@ if(NOT XercesC_FOUND)
     if(XercesC_INCLUDE_DIR AND XercesC_LIBRARY)
         set(XercesC_FOUND TRUE)
         message(STATUS "FindXercesC: legacy MODULE-mode find — ${XercesC_LIBRARY}")
-        if(NOT TARGET XercesC::XercesC)
-            add_library(XercesC::XercesC UNKNOWN IMPORTED)
-            set_target_properties(XercesC::XercesC PROPERTIES
-                IMPORTED_LOCATION "${XercesC_LIBRARY}"
-                INTERFACE_INCLUDE_DIRECTORIES "${XercesC_INCLUDE_DIR}"
-            )
-        endif()
     endif()
 endif()
 
@@ -208,6 +201,31 @@ if(XercesC_FOUND)
         # first entry (source tree) is where the version header lives.
         list(GET XercesC_INCLUDE_DIR 0 _first_inc)
         _dissco_xerces_extract_version("${_first_inc}" XercesC_VERSION)
+    endif()
+
+    # Ensure XercesC::XercesC exists in this directory's scope.
+    #
+    # Why this matters: imported targets are LOCAL to the directory they're
+    # created in by default. The project calls find_package(XercesC) from
+    # multiple subdirectories (CMOD, LASSIE); on the second call, the
+    # cache-hit fast path (1) returns early before any target-creation
+    # block runs, so the target — which was created locally in the first
+    # caller's scope — isn't visible here. The FetchContent path also
+    # creates a non-imported target (xerces-c) that's already visible
+    # globally via its target name.
+    if(NOT TARGET XercesC::XercesC)
+        if(XercesC_LIBRARY STREQUAL "xerces-c" AND TARGET xerces-c)
+            # FetchContent path — alias is fine and cheap.
+            add_library(XercesC::XercesC ALIAS xerces-c)
+        else()
+            # Legacy / CONFIG-revived path. GLOBAL so subsequent
+            # find_package calls in other directories see this target.
+            add_library(XercesC::XercesC UNKNOWN IMPORTED GLOBAL)
+            set_target_properties(XercesC::XercesC PROPERTIES
+                IMPORTED_LOCATION "${XercesC_LIBRARY}"
+                INTERFACE_INCLUDE_DIRECTORIES "${XercesC_INCLUDE_DIR}"
+            )
+        endif()
     endif()
 endif()
 
