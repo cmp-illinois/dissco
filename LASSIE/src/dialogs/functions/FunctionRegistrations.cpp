@@ -24,7 +24,9 @@
 #include "impl/RandomOrderIntFunction.hpp"
 #include "impl/RandomizerFunction.hpp"
 #include "impl/ReadFileFunctions.hpp"
+#include "impl/RevFunctions.hpp"
 #include "impl/SelectFunction.hpp"
+#include "impl/SPAFunction.hpp"
 #include "impl/StochosFunction.hpp"
 #include "impl/SpectrumGenFunction.hpp"
 #include "impl/StaticConstantFunctions.hpp"
@@ -68,4 +70,8 @@ void registerAllFunctions() {
     r.registerType<ValuePickFunction>();
     r.registerType<SelectFunction>();
     r.registerType<StochosFunction>();
+    r.registerType<SPAFunction>();
+    r.registerType<RevSimpleFunction>();
+    r.registerType<RevMediumFunction>();
+    r.registerType<RevAdvancedFunction>();
 }

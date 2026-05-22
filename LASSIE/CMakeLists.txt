@@ -47,6 +47,9 @@ qt_add_executable(LASSIE
     src/dialogs/functions/impl/ValuePickFunction.cpp src/dialogs/functions/impl/ValuePickFunction.hpp
     src/dialogs/functions/impl/SelectFunction.cpp src/dialogs/functions/impl/SelectFunction.hpp
     src/dialogs/functions/impl/StochosFunction.cpp src/dialogs/functions/impl/StochosFunction.hpp
+    src/dialogs/functions/impl/SPAFunction.cpp src/dialogs/functions/impl/SPAFunction.hpp
+    src/dialogs/functions/impl/RevFunctionBase.cpp src/dialogs/functions/impl/RevFunctionBase.hpp
+    src/dialogs/functions/impl/RevFunctions.hpp
     src/dialogs/functions/FunctionRegistrations.cpp
     src/widgets/REVChannel.cpp src/widgets/REVChannel.hpp
     src/widgets/SPAChannel.cpp src/widgets/SPAChannel.hpp
