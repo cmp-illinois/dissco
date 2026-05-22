@@ -3,7 +3,7 @@
 
 #include "FunctionWidget.hpp"
 
-class QLineEdit;
+class FunctionEntryRow;
 
 /** Uniform float random. Serializes as
  *  <Fun><Name>Random</Name><Low>X</Low><High>Y</High></Fun>. */
@@ -23,8 +23,8 @@ public:
     void reset() override;
 
 private:
-    QLineEdit* m_lowEdit;
-    QLineEdit* m_highEdit;
+    FunctionEntryRow* m_lowRow;
+    FunctionEntryRow* m_highRow;
 };
 
 #endif // RANDOMFUNCTION_HPP

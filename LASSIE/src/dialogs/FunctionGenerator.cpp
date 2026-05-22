@@ -475,11 +475,6 @@ void FunctionGenerator::setupUi()
         connect(w, &FunctionWidget::xmlChanged, this, [this, w]() {
             ui->resultTextEdit->setText(w->buildXMLString());
         });
-        connect(w, &FunctionWidget::nestedFunctionRequested, this,
-            [this](FunctionReturnType rt, FunctionWidget::NestedAcceptCallback onAccept) {
-                FunctionGenerator nested(this, rt, QString());
-                if (nested.exec() == QDialog::Accepted) onAccept(nested.getResultString());
-            });
     }
 
     // Helper: find and select the combo box item matching the function name

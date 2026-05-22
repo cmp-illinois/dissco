@@ -3,7 +3,7 @@
 
 #include "FunctionWidget.hpp"
 
-class QLineEdit;
+class FunctionEntryRow;
 
 /** Natural log. Serializes as <Fun><Name>LN</Name><Entry>X</Entry></Fun>. */
 class LNFunction : public FunctionWidget {
@@ -22,7 +22,7 @@ public:
     void reset() override;
 
 private:
-    QLineEdit* m_entryEdit;
+    FunctionEntryRow* m_row;
 };
 
 #endif // LNFUNCTION_HPP

@@ -3,7 +3,7 @@
 
 #include "FunctionWidget.hpp"
 
-class QLineEdit;
+class FunctionEntryRow;
 
 /** Fibonacci. Serializes as <Fun><Name>Fibonacci</Name><Entry>X</Entry></Fun>. */
 class FibonacciFunction : public FunctionWidget {
@@ -22,7 +22,7 @@ public:
     void reset() override;
 
 private:
-    QLineEdit* m_entryEdit;
+    FunctionEntryRow* m_row;
 };
 
 #endif // FIBONACCIFUNCTION_HPP

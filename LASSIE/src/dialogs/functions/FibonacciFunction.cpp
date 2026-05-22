@@ -1,33 +1,21 @@
 #include "FibonacciFunction.hpp"
 
-#include <QHBoxLayout>
-#include <QLabel>
-#include <QLineEdit>
-#include <QPushButton>
+#include "../../widgets/generic/FunctionEntryRow.hpp"
+
+#include <QVBoxLayout>
 
 FibonacciFunction::FibonacciFunction(QWidget* parent)
     : FunctionWidget(parent)
 {
-    auto* layout = new QHBoxLayout(this);
-    layout->addWidget(new QLabel(tr("Fibonacci:"), this));
+    m_row = new FunctionEntryRow(tr("Fibonacci:"), /*index=*/0,
+                                 FunctionReturnType::functionReturnFloat,
+                                 /*rmVisible=*/false, /*insVisible=*/false,
+                                 this);
+    auto* layout = new QVBoxLayout(this);
+    layout->addWidget(m_row);
 
-    m_entryEdit = new QLineEdit(this);
-    layout->addWidget(m_entryEdit);
-
-    auto* insertFnButton = new QPushButton(tr("Insert Function"), this);
-    layout->addWidget(insertFnButton);
-
-    connect(m_entryEdit, &QLineEdit::textChanged,
-            this, &FunctionWidget::xmlChanged);
-
-    connect(insertFnButton, &QPushButton::clicked, this, [this]() {
-        QLineEdit* target = m_entryEdit;
-        emit nestedFunctionRequested(
-            FunctionReturnType::functionReturnFloat,
-            [target](const QString& result) {
-                if (!result.isEmpty()) target->setText(result);
-            });
-    });
+    connect(m_row, &FunctionEntryRow::textChanged,
+            this, [this]() { emit xmlChanged(); });
 }
 
 QList<FunctionReturnType> FibonacciFunction::supportedReturnTypes() const {
@@ -40,14 +28,14 @@ QList<FunctionReturnType> FibonacciFunction::supportedReturnTypes() const {
 
 QString FibonacciFunction::buildXMLString() const {
     return QStringLiteral("<Fun><Name>Fibonacci</Name><Entry>")
-         + m_entryEdit->text()
+         + m_row->getText()
          + QStringLiteral("</Entry></Fun>");
 }
 
 void FibonacciFunction::populateFromXML(QXmlStreamReader& reader) {
-    m_entryEdit->setText(nextChildInner(reader));
+    m_row->setText(nextChildInner(reader));
 }
 
 void FibonacciFunction::reset() {
-    m_entryEdit->clear();
+    m_row->setText(QString());
 }

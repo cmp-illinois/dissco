@@ -27,11 +27,6 @@ class FunctionWidget : public QWidget {
     Q_OBJECT
 
 public:
-    /** Callback type used by nestedFunctionRequested. Aliased because Qt's
-     *  MOC mis-parses raw `std::function<void(const QString&)>` in signal
-     *  declarations (the inner comma trips its template tokenizer). */
-    using NestedAcceptCallback = std::function<void(const QString&)>;
-
     explicit FunctionWidget(QWidget* parent = nullptr) : QWidget(parent) {}
     ~FunctionWidget() override = default;
 
@@ -85,15 +80,6 @@ signals:
     /** Emitted whenever a user edit may have changed the output XML.
      *  FunctionGenerator listens to refresh its preview text edit. */
     void xmlChanged();
-
-    /** Emitted when an "Insert Function" button is clicked. The host
-     *  FunctionGenerator handles this by launching a nested dialog of
-     *  the given return type; on accept, the dialog's result string is
-     *  passed to onAccept. The callback indirection keeps the widget
-     *  agnostic of where the resulting text lands (a QLineEdit, a row
-     *  of a custom widget, etc.). */
-    void nestedFunctionRequested(FunctionReturnType returnType,
-                                 NestedAcceptCallback onAccept);
 };
 
 #endif // FUNCTIONWIDGET_HPP

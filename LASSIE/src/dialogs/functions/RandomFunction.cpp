@@ -1,60 +1,33 @@
 #include "RandomFunction.hpp"
 
-#include <QHBoxLayout>
-#include <QLabel>
-#include <QLineEdit>
-#include <QPushButton>
-#include <QVBoxLayout>
+#include "../../widgets/generic/FunctionEntryRow.hpp"
 
-namespace {
-    // Build a "label / line-edit / Insert Function" row. The button is
-    // wired to fire `onInsertClicked()` so the caller can emit the nested
-    // function request with the right target callback.
-    QHBoxLayout* makeRow(QWidget* parent,
-                         const QString& labelText,
-                         QLineEdit*& edit,
-                         QPushButton*& button) {
-        auto* row = new QHBoxLayout;
-        row->addWidget(new QLabel(labelText, parent));
-        edit = new QLineEdit(parent);
-        row->addWidget(edit);
-        button = new QPushButton(QObject::tr("Insert Function"), parent);
-        row->addWidget(button);
-        return row;
-    }
-}
+#include <QVBoxLayout>
 
 RandomFunction::RandomFunction(QWidget* parent)
     : FunctionWidget(parent)
 {
+    m_lowRow  = new FunctionEntryRow(tr("Lower Bound:"), /*index=*/0,
+                                     FunctionReturnType::functionReturnFloat,
+                                     /*rmVisible=*/false, /*insVisible=*/false,
+                                     this);
+    m_highRow = new FunctionEntryRow(tr("Upper Bound:"), /*index=*/1,
+                                     FunctionReturnType::functionReturnFloat,
+                                     /*rmVisible=*/false, /*insVisible=*/false,
+                                     this);
+
     auto* layout = new QVBoxLayout(this);
+    layout->addWidget(m_lowRow);
+    layout->addWidget(m_highRow);
 
-    QPushButton* lowButton = nullptr;
-    QPushButton* highButton = nullptr;
-    layout->addLayout(makeRow(this, tr("Lower Bound:"), m_lowEdit, lowButton));
-    layout->addLayout(makeRow(this, tr("Upper Bound:"), m_highEdit, highButton));
+    // Legacy seeded these on every combo-box selection; this is more like
+    // a sensible initial default.
+    m_lowRow->setText(QStringLiteral("0"));
+    m_highRow->setText(QStringLiteral("1"));
 
-    // Legacy behavior seeded these fields with 0 / 1 on every combo-box
-    // selection; this is more like a sensible initial default.
-    m_lowEdit->setText(QStringLiteral("0"));
-    m_highEdit->setText(QStringLiteral("1"));
-
-    connect(m_lowEdit, &QLineEdit::textChanged, this, &FunctionWidget::xmlChanged);
-    connect(m_highEdit, &QLineEdit::textChanged, this, &FunctionWidget::xmlChanged);
-
-    auto requestNested = [this](QLineEdit* target) {
-        emit nestedFunctionRequested(
-            FunctionReturnType::functionReturnFloat,
-            [target](const QString& result) {
-                if (!result.isEmpty()) target->setText(result);
-            });
-    };
-    connect(lowButton, &QPushButton::clicked, this, [this, requestNested]() {
-        requestNested(m_lowEdit);
-    });
-    connect(highButton, &QPushButton::clicked, this, [this, requestNested]() {
-        requestNested(m_highEdit);
-    });
+    auto forward = [this]() { emit xmlChanged(); };
+    connect(m_lowRow,  &FunctionEntryRow::textChanged, this, forward);
+    connect(m_highRow, &FunctionEntryRow::textChanged, this, forward);
 }
 
 QList<FunctionReturnType> RandomFunction::supportedReturnTypes() const {
@@ -66,18 +39,18 @@ QList<FunctionReturnType> RandomFunction::supportedReturnTypes() const {
 
 QString RandomFunction::buildXMLString() const {
     return QStringLiteral("<Fun><Name>Random</Name><Low>")
-         + m_lowEdit->text()
+         + m_lowRow->getText()
          + QStringLiteral("</Low><High>")
-         + m_highEdit->text()
+         + m_highRow->getText()
          + QStringLiteral("</High></Fun>");
 }
 
 void RandomFunction::populateFromXML(QXmlStreamReader& reader) {
-    m_lowEdit->setText(nextChildInner(reader));
-    m_highEdit->setText(nextChildInner(reader));
+    m_lowRow->setText(nextChildInner(reader));
+    m_highRow->setText(nextChildInner(reader));
 }
 
 void RandomFunction::reset() {
-    m_lowEdit->setText(QStringLiteral("0"));
-    m_highEdit->setText(QStringLiteral("1"));
+    m_lowRow->setText(QStringLiteral("0"));
+    m_highRow->setText(QStringLiteral("1"));
 }

@@ -1,33 +1,21 @@
 #include "LNFunction.hpp"
 
-#include <QHBoxLayout>
-#include <QLabel>
-#include <QLineEdit>
-#include <QPushButton>
+#include "../../widgets/generic/FunctionEntryRow.hpp"
+
+#include <QVBoxLayout>
 
 LNFunction::LNFunction(QWidget* parent)
     : FunctionWidget(parent)
 {
-    auto* layout = new QHBoxLayout(this);
-    layout->addWidget(new QLabel(tr("LN:"), this));
+    m_row = new FunctionEntryRow(tr("LN:"), /*index=*/0,
+                                 FunctionReturnType::functionReturnFloat,
+                                 /*rmVisible=*/false, /*insVisible=*/false,
+                                 this);
+    auto* layout = new QVBoxLayout(this);
+    layout->addWidget(m_row);
 
-    m_entryEdit = new QLineEdit(this);
-    layout->addWidget(m_entryEdit);
-
-    auto* insertFnButton = new QPushButton(tr("Insert Function"), this);
-    layout->addWidget(insertFnButton);
-
-    connect(m_entryEdit, &QLineEdit::textChanged,
-            this, &FunctionWidget::xmlChanged);
-
-    connect(insertFnButton, &QPushButton::clicked, this, [this]() {
-        QLineEdit* target = m_entryEdit;
-        emit nestedFunctionRequested(
-            FunctionReturnType::functionReturnFloat,
-            [target](const QString& result) {
-                if (!result.isEmpty()) target->setText(result);
-            });
-    });
+    connect(m_row, &FunctionEntryRow::textChanged,
+            this, [this]() { emit xmlChanged(); });
 }
 
 QList<FunctionReturnType> LNFunction::supportedReturnTypes() const {
@@ -39,14 +27,14 @@ QList<FunctionReturnType> LNFunction::supportedReturnTypes() const {
 
 QString LNFunction::buildXMLString() const {
     return QStringLiteral("<Fun><Name>LN</Name><Entry>")
-         + m_entryEdit->text()
+         + m_row->getText()
          + QStringLiteral("</Entry></Fun>");
 }
 
 void LNFunction::populateFromXML(QXmlStreamReader& reader) {
-    m_entryEdit->setText(nextChildInner(reader));
+    m_row->setText(nextChildInner(reader));
 }
 
 void LNFunction::reset() {
-    m_entryEdit->clear();
+    m_row->setText(QString());
 }

@@ -3,16 +3,9 @@
 
 #include "FunctionWidget.hpp"
 
-class QLineEdit;
+class FunctionEntryRow;
 
-/**
- * FunctionWidget for the "Inverse" function: one numeric entry, one
- * "Insert Function" button. Serializes as
- *     <Fun><Name>Inverse</Name><Entry>X</Entry></Fun>.
- *
- * First port from FunctionGenerator's legacy monolithic switch — kept
- * deliberately simple as a template for subsequent ports.
- */
+/** Inverse. Serializes as <Fun><Name>Inverse</Name><Entry>X</Entry></Fun>. */
 class InverseFunction : public FunctionWidget {
     Q_OBJECT
 
@@ -29,7 +22,7 @@ public:
     void reset() override;
 
 private:
-    QLineEdit* m_entryEdit;
+    FunctionEntryRow* m_row;
 };
 
 #endif // INVERSEFUNCTION_HPP
