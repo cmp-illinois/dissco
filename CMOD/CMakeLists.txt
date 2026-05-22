@@ -19,7 +19,11 @@ add_executable(CMOD ${CMOD_SRC})
 
 ### libsndfile must be linked in just the same way as it is in LASS ###
 target_link_libraries(CMOD PUBLIC ${SNDFILE_LIBRARY})
-target_link_libraries(CMOD PUBLIC ${XercesC_LIBRARY})
+# Target-based linkage so include dirs propagate via INTERFACE_INCLUDE_DIRECTORIES.
+# This is necessary when xerces-c is built via FetchContent (its headers live
+# in <build>/_deps/xerces_c-src/... not on the compiler's default search path)
+# and is harmless for system installs.
+target_link_libraries(CMOD PUBLIC XercesC::XercesC)
 # add_subdirectory(${CMAKE_SOURCE_DIR}/external-libs/muParser)
 target_link_libraries(CMOD PUBLIC MUPARSER)
 target_link_libraries(CMOD PUBLIC LASS)
@@ -73,12 +77,22 @@ else()
     )
 endif()
 
-# Ship libsndfile's runtime DLL alongside the executables on Windows when
-# FindSndFile resolved to the FetchContent prebuilt (vcpkg / brew / apt
-# installs put it in a system-discoverable place and don't need this).
-# windeployqt only knows about Qt DLLs, so this is on us.
+# Ship third-party runtime DLLs alongside the executables on Windows.
+# windeployqt only knows about Qt's DLLs, so libsndfile and xerces-c are
+# our responsibility. SNDFILE_DLL is set by FindSndFile when the prebuilt
+# fallback was used; XERCESC_DLL is set by FindXercesC when the
+# FetchContent fallback was used. Both are no-ops if discovery resolved
+# to a system install that placed DLLs on PATH.
 if(WIN32 AND SNDFILE_DLL)
     install(FILES "${SNDFILE_DLL}"
+        DESTINATION ${CMAKE_INSTALL_BINDIR}
+        COMPONENT Runtime
+    )
+endif()
+if(WIN32 AND XERCESC_DLL)
+    # XERCESC_DLL is a generator expression ($<TARGET_FILE:xerces-c>); use
+    # install(FILES) with it directly — CMake evaluates it at install time.
+    install(FILES "${XERCESC_DLL}"
         DESTINATION ${CMAKE_INSTALL_BINDIR}
         COMPONENT Runtime
     )
