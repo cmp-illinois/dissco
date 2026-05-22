@@ -18,6 +18,7 @@
 #include "impl/RandomizerFunction.hpp"
 #include "impl/ReadFileFunctions.hpp"
 #include "impl/SpectrumGenFunction.hpp"
+#include "impl/StaticConstantFunctions.hpp"
 
 void registerAllFunctions() {
     auto& r = FunctionRegistry::instance();
@@ -40,4 +41,11 @@ void registerAllFunctions() {
     r.registerType<ReadSPAFileFunction>();
     r.registerType<ReadREVFileFunction>();
     r.registerType<ReadFILFileFunction>();
+    r.registerType<CurrentTypeFunction>();
+    r.registerType<CurrentChildNumFunction>();
+    r.registerType<CurrentPartialNumFunction>();
+    r.registerType<CurrentSegmentFunction>();
+    r.registerType<AvailableEduFunction>();
+    r.registerType<PreviousChildDurationFunction>();
+    r.registerType<CurrentLayerFunction>();
 }

@@ -36,6 +36,7 @@ qt_add_executable(LASSIE
     src/dialogs/functions/impl/MakeListFunction.hpp
     src/dialogs/functions/impl/SpectrumGenFunction.hpp
     src/dialogs/functions/impl/ReadFileFunctions.hpp
+    src/dialogs/functions/impl/StaticConstantFunctions.hpp
     src/dialogs/functions/FunctionRegistrations.cpp
     src/widgets/REVChannel.cpp src/widgets/REVChannel.hpp
     src/widgets/SPAChannel.cpp src/widgets/SPAChannel.hpp
