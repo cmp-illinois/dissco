@@ -12,6 +12,8 @@
 // #include <QOverload>
 #include <QDateTime>
 #include <QScrollBar>
+#include <QXmlStreamReader>
+#include <QXmlStreamWriter>
 
 #include <string>
 
@@ -20,6 +22,50 @@
 
 #include "../widgets/Stochos.hpp"
 #include "../widgets/Select.hpp"
+
+namespace {
+    // Capture inner content of element at StartElement; leave cursor at EndElement.
+    // For text-only elements returns the text; for elements with nested children
+    // returns the serialized inner XML (e.g. "<Fun>...</Fun>").
+    QString readInner(QXmlStreamReader& r) {
+        QString result;
+        QXmlStreamWriter w(&result);
+        bool hasChildElement = false;
+        QString textBuffer;
+        int depth = 0;
+        while (!r.atEnd()) {
+            r.readNext();
+            switch (r.tokenType()) {
+                case QXmlStreamReader::StartElement: {
+                    hasChildElement = true;
+                    w.writeStartElement(r.name().toString());
+                    const auto attrs = r.attributes();
+                    for (const auto& a : attrs)
+                        w.writeAttribute(a.name().toString(), a.value().toString());
+                    ++depth;
+                    break;
+                }
+                case QXmlStreamReader::EndElement:
+                    if (depth == 0)
+                        return hasChildElement ? result : textBuffer;
+                    w.writeEndElement();
+                    --depth;
+                    break;
+                case QXmlStreamReader::Characters:
+                    if (hasChildElement) w.writeCharacters(r.text().toString());
+                    else textBuffer += r.text().toString();
+                    break;
+                default: break;
+            }
+        }
+        return hasChildElement ? result : textBuffer;
+    }
+
+    QString nextChildInner(QXmlStreamReader& r) {
+        if (!r.readNextStartElement()) return QString();
+        return readInner(r);
+    }
+}
 
 
 FunctionGenerator::FunctionGenerator(QWidget *parent, FunctionReturnType _returnType, QString _originalString)
@@ -409,229 +455,121 @@ void FunctionGenerator::setupUi()
     connect(ui->spectrumGenEnvelopeEdit, &QLineEdit::textChanged, this, &FunctionGenerator::Spectrum_GenTextChanged);
     connect(ui->spectrumGenDistanceEdit, &QLineEdit::textChanged, this, &FunctionGenerator::Spectrum_GenTextChanged);
 
-    // TO DO: Parsing to set result string value for all input fields
-    XMLPlatformUtils::Initialize();
-    XercesDOMParser* parser = new XercesDOMParser();
-    std::string stdOriginalString = originalString.toStdString();
-    xercesc::MemBufInputSource myxml_buf  ((const XMLByte*)stdOriginalString.c_str(), stdOriginalString.size(),
-                                        "function (in memory)");
-    parser->parse(myxml_buf);
-    DOMDocument* xmlDocument = parser->getDocument();
-    DOMElement* root = xmlDocument->getDocumentElement();
-
-    char* functionNameChars;
-    char* charBuffer;
-    DOMCharacterData* textData;
-    std::string functionName;
-    DOMElement* thisElement;
-
-    //emptyString
-    if (root == NULL){ return; }
-    DOMElement* functionNameElement = root->getFirstElementChild();
-    textData = ( DOMCharacterData*) functionNameElement->getFirstChild();
-    if (textData){
-        functionNameChars = XMLString::transcode(textData->getData());
-        functionName = string(functionNameChars);
-        XMLString::release(&functionNameChars);
-    }
-    // Helper to find and select the combo box item matching the function name
-    auto selectComboItem = [&](const std::string& name) {
+    // Helper: find and select the combo box item matching the function name
+    auto selectComboItem = [&](const QString& name) {
         for (int i = 0; i < ui->functionOptions->count(); ++i) {
-            if (ui->functionOptions->itemText(i).toStdString() == name) {
+            if (ui->functionOptions->itemText(i) == name) {
                 ui->functionOptions->setCurrentIndex(i);
                 return;
             }
         }
     };
 
+    if (originalString.isEmpty()) return;
+
+    QXmlStreamReader r(originalString);
+    if (!r.readNextStartElement()) return;       // <Fun> root
+    if (!r.readNextStartElement()) return;       // <Name>
+    const QString functionName = readInner(r);   // cursor now at </Name>
+
     if (functionName == "RandomInt") {
         selectComboItem(functionName);
-        DOMElement* thisElement = functionNameElement->getNextElementSibling();
-        ui->randomIntLowerBoundEdit->setText(QString::fromStdString(getFunctionString(thisElement)));
-        thisElement = thisElement->getNextElementSibling();
-        ui->randomIntUpperBoundEdit->setText(QString::fromStdString(getFunctionString(thisElement)));
+        ui->randomIntLowerBoundEdit->setText(nextChildInner(r));
+        ui->randomIntUpperBoundEdit->setText(nextChildInner(r));
     } else if (functionName == "MakeSieve") {
-        int index = -1;
-        for (int i = 0; i < ui->functionOptions->count(); ++i) {
-            if (ui->functionOptions->itemText(i).toStdString() == functionName) {
-                index = i;
-                break;
-            }
-        }
-        if (index != -1) { ui->functionOptions->setCurrentIndex(index); }
-        // <Low>
-        DOMElement* thisElement = functionNameElement->getNextElementSibling();
-        ui->makeSieveLowBoundEdit->setText(QString::fromStdString(getFunctionString(thisElement)));
-        // <High>
-        thisElement = thisElement->getNextElementSibling();
-        ui->makeSieveHighBoundEdit->setText(QString::fromStdString(getFunctionString(thisElement)));
-        // <Method>
-        thisElement = thisElement->getNextElementSibling();
-        std::string methodStr = getFunctionString(thisElement);
-        if (methodStr == "MODS") { ui->makeSieveElementsMods->setChecked(true); }
-        else if (methodStr == "FAKE") { ui->makeSieveElementsFake->setChecked(true); }
-        else if (methodStr == "FIBONACCI") { ui->makeSieveElementsFib->setChecked(true); }
-        else ui->makeSieveElementsMeaningful->setChecked(true); // default, also if == "MEANINGFUL"
-        // <Elements>
-        thisElement = thisElement->getNextElementSibling();
-        ui->makeSieveElementsValuesEdit->setText(QString::fromStdString(getFunctionString(thisElement)));
-        // <WeightMethod>
-        thisElement = thisElement->getNextElementSibling();
-        std::string weightMethodStr = getFunctionString(thisElement);
-        if (weightMethodStr == "HIERARCHIC") { ui->makeSieveWeightsHierarchic->setChecked(true); }
-        else if (weightMethodStr == "INCLUDE") { ui->makeSieveWeightsInclude->setChecked(true); }
-        else ui->makeSieveWeightsPeriodic->setChecked(true); // default, also if == "PERIODIC"
-        // <Weight>
-        thisElement = thisElement->getNextElementSibling();
-        ui->makeSieveWeightsValuesEdit->setText(QString::fromStdString(getFunctionString(thisElement)));
-        // <Offset>
-        thisElement = thisElement->getNextElementSibling();
-        ui->makeSieveOffsetEdit->setText(QString::fromStdString(getFunctionString(thisElement)));
+        selectComboItem(functionName);
+        ui->makeSieveLowBoundEdit->setText(nextChildInner(r));
+        ui->makeSieveHighBoundEdit->setText(nextChildInner(r));
+        const QString methodStr = nextChildInner(r);
+        if (methodStr == "MODS") ui->makeSieveElementsMods->setChecked(true);
+        else if (methodStr == "FAKE") ui->makeSieveElementsFake->setChecked(true);
+        else if (methodStr == "FIBONACCI") ui->makeSieveElementsFib->setChecked(true);
+        else ui->makeSieveElementsMeaningful->setChecked(true); // default / MEANINGFUL
+        ui->makeSieveElementsValuesEdit->setText(nextChildInner(r));
+        const QString weightMethodStr = nextChildInner(r);
+        if (weightMethodStr == "HIERARCHIC") ui->makeSieveWeightsHierarchic->setChecked(true);
+        else if (weightMethodStr == "INCLUDE") ui->makeSieveWeightsInclude->setChecked(true);
+        else ui->makeSieveWeightsPeriodic->setChecked(true); // default / PERIODIC
+        ui->makeSieveWeightsValuesEdit->setText(nextChildInner(r));
+        ui->makeSieveOffsetEdit->setText(nextChildInner(r));
     }
     else if (functionName == "MakeFilter") {
         selectComboItem(functionName);
-        // Parse <Type>
-        DOMElement* thisElement = functionNameElement->getNextElementSibling();
-        std::string filterType = getFunctionString(thisElement);
+        const QString filterType = nextChildInner(r);
         if (filterType == "HPF") ui->makeFilterHPF->setChecked(true);
         else if (filterType == "BPF") ui->makeFilterBPF->setChecked(true);
         else if (filterType == "NF") ui->makeFilterNF->setChecked(true);
         else if (filterType == "PBEQF") ui->makeFilterPBEQ->setChecked(true);
         else if (filterType == "LSF") ui->makeFilterLSF->setChecked(true);
         else if (filterType == "HSF") ui->makeFilterHSF->setChecked(true);
-        else ui->makeFilterLPF->setChecked(true); // default case, also if == "LPF"
-        // Parse <Frequency>
-        thisElement = thisElement->getNextElementSibling();
-        ui->makeFilterFrequencyEdit->setText(QString::fromStdString(getFunctionString(thisElement)));
-        // Parse <BandWidth>
-        thisElement = thisElement->getNextElementSibling();
-        ui->makeFilterBWEdit->setText(QString::fromStdString(getFunctionString(thisElement)));
-        // Parse <dBGain>
-        thisElement = thisElement->getNextElementSibling();
-        ui->makeFilterDBEdit->setText(QString::fromStdString(getFunctionString(thisElement)));
+        else ui->makeFilterLPF->setChecked(true); // default / LPF
+        ui->makeFilterFrequencyEdit->setText(nextChildInner(r));
+        ui->makeFilterBWEdit->setText(nextChildInner(r));
+        ui->makeFilterDBEdit->setText(nextChildInner(r));
     }
     else if (functionName == "ValuePick") {
-        int index = -1;
-        for (int i = 0; i < ui->functionOptions->count(); ++i) {
-            if (ui->functionOptions->itemText(i).toStdString() == functionName) {
-                index = i;
-                break;
-            }
-        }
-        if (index != -1) { ui->functionOptions->setCurrentIndex(index); }
-
-        DOMElement* thisElement = functionNameElement->getNextElementSibling(); // <Range>
-        ui->valuePickAbsRangeEdit->setText(QString::fromStdString(getFunctionString(thisElement)));
-
-        thisElement = thisElement->getNextElementSibling(); // <Low>
-        ui->valuePickLowEdit->setText(QString::fromStdString(getFunctionString(thisElement)));
-
-        thisElement = thisElement->getNextElementSibling(); // <High>
-        ui->valuePickHighEdit->setText(QString::fromStdString(getFunctionString(thisElement)));
-
-        thisElement = thisElement->getNextElementSibling(); // <Dist>
-        ui->valuePickDistEdit->setText(QString::fromStdString(getFunctionString(thisElement)));
-
-        thisElement = thisElement->getNextElementSibling(); // <Method>
-        std::string method = getFunctionString(thisElement);
-        if (method == "MEANINGFUL") { ui->valuePickElementsMeaningful->setChecked(true); }
-        else if (method == "MODS") { ui->valuePickElementsMods->setChecked(true); }
-        else if (method == "FAKE") { ui->valuePickElementsFake->setChecked(true); }
-        else if (method == "FIBONACCI") { ui->valuePickElementsFib->setChecked(true); }
-
-        thisElement = thisElement->getNextElementSibling(); // <Elements>
-        ui->valuePickValuesElementsEdit->setText(QString::fromStdString(getFunctionString(thisElement)));
-
-        thisElement = thisElement->getNextElementSibling(); // <WeightMethod>
-        std::string weightMethod = getFunctionString(thisElement);
-        if (weightMethod == "PERIODIC") { ui->valuePickWeightsPeriodic->setChecked(true); }
-        else if (weightMethod == "HIERARCHIC") { ui->valuePickWeightsHierarchic->setChecked(true); }
-        else if (weightMethod == "INCLUDE") { ui->valuePickWeightsInclude->setChecked(true); }
-
-        thisElement = thisElement->getNextElementSibling(); // <Weight>
-        ui->valuePickValuesWeightsEdit->setText(QString::fromStdString(getFunctionString(thisElement)));
-
-        thisElement = thisElement->getNextElementSibling(); // <Type>
-        std::string type = getFunctionString(thisElement);
-        if (type == "VARIABLE") { ui->valuePickTypeVariable->setChecked(true); }
-        else if (type == "CONSTANT") { ui->valuePickTypeConstant->setChecked(true); }
-
-        thisElement = thisElement->getNextElementSibling(); // <Offsets>
-        ui->valuePickOffsetEdit->setText(QString::fromStdString(getFunctionString(thisElement)));
+        selectComboItem(functionName);
+        ui->valuePickAbsRangeEdit->setText(nextChildInner(r));
+        ui->valuePickLowEdit->setText(nextChildInner(r));
+        ui->valuePickHighEdit->setText(nextChildInner(r));
+        ui->valuePickDistEdit->setText(nextChildInner(r));
+        const QString method = nextChildInner(r);
+        if (method == "MEANINGFUL") ui->valuePickElementsMeaningful->setChecked(true);
+        else if (method == "MODS") ui->valuePickElementsMods->setChecked(true);
+        else if (method == "FAKE") ui->valuePickElementsFake->setChecked(true);
+        else if (method == "FIBONACCI") ui->valuePickElementsFib->setChecked(true);
+        ui->valuePickValuesElementsEdit->setText(nextChildInner(r));
+        const QString weightMethod = nextChildInner(r);
+        if (weightMethod == "PERIODIC") ui->valuePickWeightsPeriodic->setChecked(true);
+        else if (weightMethod == "HIERARCHIC") ui->valuePickWeightsHierarchic->setChecked(true);
+        else if (weightMethod == "INCLUDE") ui->valuePickWeightsInclude->setChecked(true);
+        ui->valuePickValuesWeightsEdit->setText(nextChildInner(r));
+        const QString type = nextChildInner(r);
+        if (type == "VARIABLE") ui->valuePickTypeVariable->setChecked(true);
+        else if (type == "CONSTANT") ui->valuePickTypeConstant->setChecked(true);
+        ui->valuePickOffsetEdit->setText(nextChildInner(r));
     } else if (functionName == "GetPattern") {
         selectComboItem(functionName);
-        // <Method>
-        DOMElement* thisElement = functionNameElement->getNextElementSibling();
-        std::string method = getFunctionString(thisElement);
-        if (method == "OTHER") { ui->getPatternMethodOther->setChecked(true); }
-        else if (method == "TYPE_CLUSTERS") { ui->getPatternMethodTypeClusters->setChecked(true); }
-        else if (method == "TIME_DEPEND") { ui->getPatternMethodTimeDepend->setChecked(true); }
-        else if (method == "PROBABILITY") { ui->getPatternMethodProbability->setChecked(true); }
-        else { ui->getPatternMethodInOrder->setChecked(true); } // default / "IN_ORDER"
-        // <Offset>
-        thisElement = thisElement->getNextElementSibling();
-        ui->getPatternOriginEdit->setText(QString::fromStdString(getFunctionString(thisElement)));
-        // <Pattern>
-        thisElement = thisElement->getNextElementSibling();
-        ui->getPatternChooseEdit->setText(QString::fromStdString(getFunctionString(thisElement)));
+        const QString method = nextChildInner(r);
+        if (method == "OTHER") ui->getPatternMethodOther->setChecked(true);
+        else if (method == "TYPE_CLUSTERS") ui->getPatternMethodTypeClusters->setChecked(true);
+        else if (method == "TIME_DEPEND") ui->getPatternMethodTimeDepend->setChecked(true);
+        else if (method == "PROBABILITY") ui->getPatternMethodProbability->setChecked(true);
+        else ui->getPatternMethodInOrder->setChecked(true); // default / IN_ORDER
+        ui->getPatternOriginEdit->setText(nextChildInner(r));
+        ui->getPatternChooseEdit->setText(nextChildInner(r));
     } else if (functionName == "MakePattern") {
         selectComboItem(functionName);
-        // <List>
-        DOMElement* thisElement = functionNameElement->getNextElementSibling();
-        ui->makePatternIntervalsEdit->setText(QString::fromStdString(getFunctionString(thisElement)));
+        ui->makePatternIntervalsEdit->setText(nextChildInner(r));
     } else if (functionName == "ExpandPattern") {
         selectComboItem(functionName);
-        // <Method>
-        DOMElement* thisElement = functionNameElement->getNextElementSibling();
-        std::string method = getFunctionString(thisElement);
-        if (method == "SYMMETRIES") { ui->expandPatternMethodSymmetries->setChecked(true); }
-        else if (method == "DISTORT") { ui->expandPatternMethodDistort->setChecked(true); }
-        else { ui->expandPatternMethodEquivalence->setChecked(true); } // default / "EQUIVALENCE"
-        // <Modulo>
-        thisElement = thisElement->getNextElementSibling();
-        ui->expandPatternModuloEdit->setText(QString::fromStdString(getFunctionString(thisElement)));
-        // <Low>
-        thisElement = thisElement->getNextElementSibling();
-        ui->expandPatternLowEdit->setText(QString::fromStdString(getFunctionString(thisElement)));
-        // <High>
-        thisElement = thisElement->getNextElementSibling();
-        ui->expandPatternHighEdit->setText(QString::fromStdString(getFunctionString(thisElement)));
-        // <Pattern>
-        thisElement = thisElement->getNextElementSibling();
-        ui->expandPatternPatternEdit->setText(QString::fromStdString(getFunctionString(thisElement)));
+        const QString method = nextChildInner(r);
+        if (method == "SYMMETRIES") ui->expandPatternMethodSymmetries->setChecked(true);
+        else if (method == "DISTORT") ui->expandPatternMethodDistort->setChecked(true);
+        else ui->expandPatternMethodEquivalence->setChecked(true); // default / EQUIVALENCE
+        ui->expandPatternModuloEdit->setText(nextChildInner(r));
+        ui->expandPatternLowEdit->setText(nextChildInner(r));
+        ui->expandPatternHighEdit->setText(nextChildInner(r));
+        ui->expandPatternPatternEdit->setText(nextChildInner(r));
     } else if (functionName == "ReadPATFile") {
         selectComboItem(functionName);
-        // <File>
-        DOMElement* thisElement = functionNameElement->getNextElementSibling();
-        ui->readPatFileEdit->setText(QString::fromStdString(getFunctionString(thisElement)));
+        ui->readPatFileEdit->setText(nextChildInner(r));
     } else if (functionName == "ReadSIVFile") {
         selectComboItem(functionName);
-        // <File>
-        DOMElement* thisElement = functionNameElement->getNextElementSibling();
-        ui->readSivFileEdit->setText(QString::fromStdString(getFunctionString(thisElement)));
+        ui->readSivFileEdit->setText(nextChildInner(r));
     } else if (functionName == "ReadENVFile") {
         selectComboItem(functionName);
-        // <File>
-        DOMElement* thisElement = functionNameElement->getNextElementSibling();
-        ui->readEnvFileEdit->setText(QString::fromStdString(getFunctionString(thisElement)));
+        ui->readEnvFileEdit->setText(nextChildInner(r));
     } else if (functionName == "ReadFILFile") {
         selectComboItem(functionName);
-        // <File>
-        DOMElement* thisElement = functionNameElement->getNextElementSibling();
-        ui->readFilFileEdit->setText(QString::fromStdString(getFunctionString(thisElement)));
+        ui->readFilFileEdit->setText(nextChildInner(r));
     } else if (functionName == "ChooseL") {
         selectComboItem(functionName);
-        // <Entry>
-        DOMElement* thisElement = functionNameElement->getNextElementSibling();
-        ui->chooseLEdit->setText(QString::fromStdString(getFunctionString(thisElement)));
+        ui->chooseLEdit->setText(nextChildInner(r));
     } else if (functionName == "EnvLib") {
         selectComboItem(functionName);
-        // <Env>
-        DOMElement* thisElement = functionNameElement->getNextElementSibling();
-        ui->envLibNumEdit->setText(QString::fromStdString(getFunctionString(thisElement)));
-        // <Scale>
-        thisElement = thisElement->getNextElementSibling();
-        ui->envLibScalingEdit->setText(QString::fromStdString(getFunctionString(thisElement)));
+        ui->envLibNumEdit->setText(nextChildInner(r));
+        ui->envLibScalingEdit->setText(nextChildInner(r));
     } else if (functionName == "Select") {
         selectComboItem("Select");
 
@@ -645,25 +583,11 @@ void FunctionGenerator::setupUi()
             } else break;
         }
 
-        // Serialize <List> inner content
-        DOMElement* listElement  = functionNameElement->getNextElementSibling(); // <List>
-        DOMElement* indexElement = listElement->getNextElementSibling();          // <Index>
-
-        std::string listContent;
-        if (listElement != nullptr && listElement->getFirstChild() != nullptr) {
-            XMLCh lsStr[3] = {chLatin_L, chLatin_S, chNull};
-            DOMImplementation* lsImpl = DOMImplementationRegistry::getDOMImplementation(lsStr);
-            DOMLSSerializer* lsSer = ((DOMImplementationLS*)lsImpl)->createLSSerializer();
-            XMLCh* lsBla = lsSer->writeToString(listElement);
-            char* lsRaw = XMLString::transcode(lsBla);
-            std::string full(lsRaw);
-            XMLString::release(&lsRaw);
-            XMLString::release(&lsBla);
-            delete lsSer;
-            size_t s0 = full.find('>') + 1;
-            size_t s1 = full.rfind('<');
-            if (s0 < s1) listContent = full.substr(s0, s1 - s0);
-        }
+        // Read inner XML of <List>, then <Index>
+        QString listContentQ;
+        if (r.readNextStartElement()) // <List>
+            listContentQ = readInner(r);
+        std::string listContent = listContentQ.toStdString();
 
         // Split by top-level commas (skip commas inside <Fun>…</Fun>)
         std::vector<std::string> selectItems;
@@ -694,12 +618,10 @@ void FunctionGenerator::setupUi()
         }
 
         for (const std::string& itemStr : selectItems) {
-            // Trim leading space that may follow a comma separator
             std::string trimmed = itemStr;
             if (!trimmed.empty() && trimmed.front() == ' ') trimmed = trimmed.substr(1);
             if (!trimmed.empty()) {
                 addSelectNodeButtonClicked();
-                // The newly added node is the last widget before the spacer
                 int last = ui->selectScrollLayout->count() - 2;
                 QLayoutItem* item = ui->selectScrollLayout->itemAt(last);
                 if (item && item->widget()) {
@@ -709,60 +631,48 @@ void FunctionGenerator::setupUi()
             }
         }
 
-        ui->selectIndexEdit->setText(
-            QString::fromStdString(getFunctionString(indexElement)));
+        ui->selectIndexEdit->setText(nextChildInner(r)); // <Index>
     } else if (functionName == "Stochos") {
         selectComboItem("Stochos");
         // selectComboItem triggers handleFunctionChanged which sets RANGE_DISTRIB and clears nodes
 
-        // <Method>
-        DOMElement* methodElement    = functionNameElement->getNextElementSibling();
-        DOMElement* envelopesElement = methodElement->getNextElementSibling();          // <Envelopes>
-        DOMElement* offsetElement    = envelopesElement->getNextElementSibling();       // <Offset>
-
-        std::string method = getFunctionString(methodElement);
+        const QString method = nextChildInner(r); // <Method>
         bool isRange = (method != "FUNCTIONS");
-
-        // Set radio before adding nodes so addStochosNodeButtonClicked picks up the right methodType
         if (!isRange) {
             // Switching to FUNCTIONS triggers clearStochosNodes (harmless, no nodes yet)
             ui->stochosMethodFunction->setChecked(true);
         }
 
         // Iterate over <Envelope> children of <Envelopes>
-        DOMElement* env = envelopesElement->getFirstElementChild();
-        while (env != nullptr) {
-            addStochosNodeButtonClicked();
-            int last = ui->stochosScrollLayout->count() - 2;
-            QLayoutItem* item = ui->stochosScrollLayout->itemAt(last);
-            Stochos* node = item ? qobject_cast<Stochos*>(item->widget()) : nullptr;
-            if (!node) break;
+        if (r.readNextStartElement()) { // <Envelopes>
+            while (r.readNextStartElement()) {
+                addStochosNodeButtonClicked();
+                int last = ui->stochosScrollLayout->count() - 2;
+                QLayoutItem* item = ui->stochosScrollLayout->itemAt(last);
+                Stochos* node = item ? qobject_cast<Stochos*>(item->widget()) : nullptr;
+                if (!node) { r.skipCurrentElement(); break; }
 
-            if (isRange) {
-                // Three <Envelope> elements per row: min, max, dist
-                node->setMinText(QString::fromStdString(getFunctionString(env)));
-                env = env->getNextElementSibling();
-                if (env) { node->setMaxText(QString::fromStdString(getFunctionString(env))); env = env->getNextElementSibling(); }
-                if (env) { node->setDistText(QString::fromStdString(getFunctionString(env))); env = env->getNextElementSibling(); }
-            } else {
-                // One <Envelope> per row
-                node->setValText(QString::fromStdString(getFunctionString(env)));
-                env = env->getNextElementSibling();
+                if (isRange) {
+                    // Three <Envelope> elements per row: min, max, dist
+                    node->setMinText(readInner(r));
+                    if (r.readNextStartElement()) node->setMaxText(readInner(r));
+                    if (r.readNextStartElement()) node->setDistText(readInner(r));
+                } else {
+                    // One <Envelope> per row
+                    node->setValText(readInner(r));
+                }
             }
         }
 
-        ui->stochosOffsetEdit->setText(QString::fromStdString(getFunctionString(offsetElement)));
+        ui->stochosOffsetEdit->setText(nextChildInner(r)); // <Offset>
     } else if (functionName == "Markov") {
         selectComboItem("GetFromMarkovChain");
-        // <Entry>
-        DOMElement* thisElement = functionNameElement->getNextElementSibling();
-        ui->markovEdit->setText(QString::fromStdString(getFunctionString(thisElement)));
+        ui->markovEdit->setText(nextChildInner(r));
     } else if (functionName == "REV_Simple" || functionName == "REV_Medium" || functionName == "REV_Advanced") {
         selectComboItem(functionName);
         // selectComboItem → handleFunctionChanged → sets REVMethodFlag, creates 1 default SOUND channel
 
-        DOMElement* applyElement = functionNameElement->getNextElementSibling(); // <Apply>
-        std::string applyMethod = getFunctionString(applyElement);
+        const QString applyMethod = nextChildInner(r); // <Apply>
 
         // Block signals to prevent handleRevApplyMethodChanged from firing twice
         // (once per radio button toggling) and creating orphaned layout widgets.
@@ -778,56 +688,55 @@ void FunctionGenerator::setupUi()
         // Discard the default SOUND channel; we'll build fresh from the XML data.
         clearRevChannels();
 
-        DOMElement* firstContainer = applyElement->getNextElementSibling(); // <Sizes> or <Percents>
-
         if (functionName == "REV_Simple") {
             // <Sizes><Size>...</Size>...</Sizes>
-            DOMElement* sizeEl = firstContainer->getFirstElementChild();
-            while (sizeEl != nullptr) {
-                REVChannel* chan = REVInsertChannel(m_revChannels.isEmpty() ? nullptr : m_revChannels.last());
-                chan->setRoomSizeText(QString::fromStdString(getFunctionString(sizeEl)));
-                sizeEl = sizeEl->getNextElementSibling();
+            if (r.readNextStartElement()) {
+                while (r.readNextStartElement()) {
+                    REVChannel* chan = REVInsertChannel(m_revChannels.isEmpty() ? nullptr : m_revChannels.last());
+                    chan->setRoomSizeText(readInner(r));
+                }
             }
         } else if (functionName == "REV_Medium") {
             // <Percents>, <Spreads>, <AllPasses>, <Delays>
-            DOMElement* spreadsEl   = firstContainer->getNextElementSibling();
-            DOMElement* allpassesEl = spreadsEl   ? spreadsEl->getNextElementSibling()   : nullptr;
-            DOMElement* delaysEl    = allpassesEl ? allpassesEl->getNextElementSibling() : nullptr;
+            QStringList percents, spreads, allpasses, delays;
+            auto readList = [&](QStringList& out) {
+                if (!r.readNextStartElement()) return;
+                while (r.readNextStartElement())
+                    out.append(readInner(r));
+            };
+            readList(percents);
+            readList(spreads);
+            readList(allpasses);
+            readList(delays);
 
-            DOMElement* pEl = firstContainer->getFirstElementChild();
-            DOMElement* sEl = spreadsEl   ? spreadsEl->getFirstElementChild()   : nullptr;
-            DOMElement* aEl = allpassesEl ? allpassesEl->getFirstElementChild() : nullptr;
-            DOMElement* dEl = delaysEl    ? delaysEl->getFirstElementChild()    : nullptr;
-
-            while (pEl != nullptr) {
+            for (int i = 0; i < percents.size(); ++i) {
                 REVChannel* chan = REVInsertChannel(m_revChannels.isEmpty() ? nullptr : m_revChannels.last());
-                chan->setReverbText(QString::fromStdString(getFunctionString(pEl)));
-                if (sEl) { chan->setHillowText(QString::fromStdString(getFunctionString(sEl)));  sEl = sEl->getNextElementSibling(); }
-                if (aEl) { chan->setAllGainText(QString::fromStdString(getFunctionString(aEl)));  aEl = aEl->getNextElementSibling(); }
-                if (dEl) { chan->setDelayText(QString::fromStdString(getFunctionString(dEl)));    dEl = dEl->getNextElementSibling(); }
-                pEl = pEl->getNextElementSibling();
+                chan->setReverbText(percents[i]);
+                if (i < spreads.size())   chan->setHillowText(spreads[i]);
+                if (i < allpasses.size()) chan->setAllGainText(allpasses[i]);
+                if (i < delays.size())    chan->setDelayText(delays[i]);
             }
         } else { // REV_Advanced
             // <Percents>, <CombGainLists>, <LPGainLists>, <AllPasses>, <Delays>
-            DOMElement* combEl      = firstContainer->getNextElementSibling();
-            DOMElement* lpEl        = combEl      ? combEl->getNextElementSibling()      : nullptr;
-            DOMElement* allpassesEl = lpEl        ? lpEl->getNextElementSibling()        : nullptr;
-            DOMElement* delaysEl    = allpassesEl ? allpassesEl->getNextElementSibling() : nullptr;
+            QStringList percents, combs, lps, allpasses, delays;
+            auto readList = [&](QStringList& out) {
+                if (!r.readNextStartElement()) return;
+                while (r.readNextStartElement())
+                    out.append(readInner(r));
+            };
+            readList(percents);
+            readList(combs);
+            readList(lps);
+            readList(allpasses);
+            readList(delays);
 
-            DOMElement* pEl = firstContainer->getFirstElementChild();
-            DOMElement* cEl = combEl      ? combEl->getFirstElementChild()      : nullptr;
-            DOMElement* lEl = lpEl        ? lpEl->getFirstElementChild()        : nullptr;
-            DOMElement* aEl = allpassesEl ? allpassesEl->getFirstElementChild() : nullptr;
-            DOMElement* dEl = delaysEl    ? delaysEl->getFirstElementChild()    : nullptr;
-
-            while (pEl != nullptr) {
+            for (int i = 0; i < percents.size(); ++i) {
                 REVChannel* chan = REVInsertChannel(m_revChannels.isEmpty() ? nullptr : m_revChannels.last());
-                chan->setReverbText(QString::fromStdString(getFunctionString(pEl)));
-                if (cEl) { chan->setCombGainText(QString::fromStdString(getFunctionString(cEl))); cEl = cEl->getNextElementSibling(); }
-                if (lEl) { chan->setLPGainText(QString::fromStdString(getFunctionString(lEl)));   lEl = lEl->getNextElementSibling(); }
-                if (aEl) { chan->setAllGainText(QString::fromStdString(getFunctionString(aEl)));  aEl = aEl->getNextElementSibling(); }
-                if (dEl) { chan->setDelayText(QString::fromStdString(getFunctionString(dEl)));    dEl = dEl->getNextElementSibling(); }
-                pEl = pEl->getNextElementSibling();
+                chan->setReverbText(percents[i]);
+                if (i < combs.size())     chan->setCombGainText(combs[i]);
+                if (i < lps.size())       chan->setLPGainText(lps[i]);
+                if (i < allpasses.size()) chan->setAllGainText(allpasses[i]);
+                if (i < delays.size())    chan->setDelayText(delays[i]);
             }
         }
 
@@ -838,15 +747,10 @@ void FunctionGenerator::setupUi()
         }
     } else if (functionName == "ReadREVFile") {
         selectComboItem(functionName);
-        DOMElement* fileElement = functionNameElement->getNextElementSibling(); // <File>
-        ui->readRevFileEdit->setText(QString::fromStdString(getFunctionString(fileElement)));
+        ui->readRevFileEdit->setText(nextChildInner(r));
     } else if (functionName == "SPA") {
-        DOMElement* methodEl   = functionNameElement->getNextElementSibling(); // <Method>
-        DOMElement* applyEl    = methodEl->getNextElementSibling();            // <Apply>
-        DOMElement* channelsEl = applyEl->getNextElementSibling();             // <Channels>
-
-        std::string method = getFunctionString(methodEl);
-        std::string apply  = getFunctionString(applyEl);
+        const QString method = nextChildInner(r); // <Method>
+        const QString apply  = nextChildInner(r); // <Apply>
 
         // Block signals BEFORE selectComboItem so that handleFunctionChanged's
         // setChecked(true) calls don't emit toggled and trigger
@@ -867,7 +771,7 @@ void FunctionGenerator::setupUi()
         }
         m_spaChannels.clear();
 
-        if (method == "MULTI_PAN")  ui->spaMultiPan->setChecked(true);
+        if (method == "MULTI_PAN") ui->spaMultiPan->setChecked(true);
         else if (method == "POLAR") ui->spaPolar->setChecked(true);
         else                        ui->spaStereo->setChecked(true);
 
@@ -880,108 +784,57 @@ void FunctionGenerator::setupUi()
         ui->spaApplySound->blockSignals(false);
         ui->spaApplyPartial->blockSignals(false);
 
-        // m_spaChannels is empty, so clearSpaChannels inside is a no-op — only
-        // one fresh set of channels is created.
         handleSpaApplyMethodChanged();
 
-        // Populate each channel from <Channels><Partials>...<P>...</P>...</Partials>...</Channels>
-        DOMElement* partialsEl = channelsEl ? channelsEl->getFirstElementChild() : nullptr;
-        int chanIdx = 0;
-        while (partialsEl != nullptr) {
-            // For MULTI_PAN, add extra channels beyond the initial one as needed
-            while (chanIdx >= m_spaChannels.size()) {
-                SPAInsertChannel(m_spaChannels.isEmpty() ? nullptr : m_spaChannels.last());
-            }
-            SPAChannel* chan = m_spaChannels[chanIdx];
+        // Populate channels from <Channels><Partials><P>…</P>…</Partials>…</Channels>
+        if (r.readNextStartElement()) { // <Channels>
+            int chanIdx = 0;
+            while (r.readNextStartElement()) { // <Partials>
+                while (chanIdx >= m_spaChannels.size())
+                    SPAInsertChannel(m_spaChannels.isEmpty() ? nullptr : m_spaChannels.last());
+                SPAChannel* chan = m_spaChannels[chanIdx];
 
-            DOMElement* pEl = partialsEl->getFirstElementChild(); // first <P>
-            int rowIdx = 0;
-            while (pEl != nullptr) {
-                // Add rows silently if the channel has fewer rows than needed
-                while (rowIdx >= chan->rowCount()) {
-                    chan->addRow(chan->rowCount(), true);
+                int rowIdx = 0;
+                while (r.readNextStartElement()) { // <P>
+                    while (rowIdx >= chan->rowCount())
+                        chan->addRow(chan->rowCount(), true);
+                    chan->setRowText(rowIdx, readInner(r));
+                    rowIdx++;
                 }
-                chan->setRowText(rowIdx, QString::fromStdString(getFunctionString(pEl)));
-                rowIdx++;
-                pEl = pEl->getNextElementSibling();
+                chanIdx++;
             }
-
-            chanIdx++;
-            partialsEl = partialsEl->getNextElementSibling();
         }
     } else if (functionName == "ReadSPAFile") {
         selectComboItem("ReadSPAFile");
-        DOMElement* fileEl = functionNameElement->getNextElementSibling(); // <File>
-        ui->readSpaFileEdit->setText(QString::fromStdString(getFunctionString(fileEl)));
+        ui->readSpaFileEdit->setText(nextChildInner(r));
     } else if (functionName == "RandomOrderInt") {
         selectComboItem(functionName);
-        DOMElement* thisElement = functionNameElement->getNextElementSibling();
-        ui->randomOrderIntLowerBoundEdit->setText(QString::fromStdString(getFunctionString(thisElement)));
-        thisElement = thisElement->getNextElementSibling();
-        ui->randomOrderIntUpperBoundEdit->setText(QString::fromStdString(getFunctionString(thisElement)));
+        ui->randomOrderIntLowerBoundEdit->setText(nextChildInner(r));
+        ui->randomOrderIntUpperBoundEdit->setText(nextChildInner(r));
     } else if (functionName == "Random") {
         selectComboItem(functionName);
-        DOMElement* thisElement = functionNameElement->getNextElementSibling();
-        ui->randomLowerBoundEdit->setText(QString::fromStdString(getFunctionString(thisElement)));
-        thisElement = thisElement->getNextElementSibling();
-        ui->randomUpperBoundEdit->setText(QString::fromStdString(getFunctionString(thisElement)));
+        ui->randomLowerBoundEdit->setText(nextChildInner(r));
+        ui->randomUpperBoundEdit->setText(nextChildInner(r));
     } else if (functionName == "Randomizer") {
         selectComboItem(functionName);
-        DOMElement* thisElement = functionNameElement->getNextElementSibling();
-        ui->randomizerBaseEdit->setText(QString::fromStdString(getFunctionString(thisElement)));
-        thisElement = thisElement->getNextElementSibling();
-        ui->randomizerDeviationEdit->setText(QString::fromStdString(getFunctionString(thisElement)));
+        ui->randomizerBaseEdit->setText(nextChildInner(r));
+        ui->randomizerDeviationEdit->setText(nextChildInner(r));
     } else if (functionName == "RandomDensity") {
         selectComboItem(functionName);
-        DOMElement* thisElement = functionNameElement->getNextElementSibling();
-        ui->randomDensityEnvEdit->setText(QString::fromStdString(getFunctionString(thisElement)));
-        thisElement = thisElement->getNextElementSibling();
-        ui->randomDensityStartTimeEdit->setText(QString::fromStdString(getFunctionString(thisElement)));
-        thisElement = thisElement->getNextElementSibling();
-        ui->randomDensityEndTimeEdit->setText(QString::fromStdString(getFunctionString(thisElement)));
+        ui->randomDensityEnvEdit->setText(nextChildInner(r));
+        ui->randomDensityStartTimeEdit->setText(nextChildInner(r));
+        ui->randomDensityEndTimeEdit->setText(nextChildInner(r));
     } else if (functionName == "Inverse") {
         selectComboItem(functionName);
-        DOMElement* thisElement = functionNameElement->getNextElementSibling();
-        ui->numToInverseEdit->setText(QString::fromStdString(getFunctionString(thisElement)));
+        ui->numToInverseEdit->setText(nextChildInner(r));
     } else if (functionName == "LN") {
         selectComboItem(functionName);
-        DOMElement* thisElement = functionNameElement->getNextElementSibling();
-        ui->lnEdit->setText(QString::fromStdString(getFunctionString(thisElement)));
+        ui->lnEdit->setText(nextChildInner(r));
     } else if (functionName == "Fibonacci") {
         selectComboItem(functionName);
-        DOMElement* thisElement = functionNameElement->getNextElementSibling();
-        ui->fibEdit->setText(QString::fromStdString(getFunctionString(thisElement)));
-    } 
-    //not work: stochos, select, Decay, SPA, REV_Simple, REV_Medium, REV_Advanced, 
-}
-
-std::string FunctionGenerator::getFunctionString(DOMElement* _thisFunctionElement){
-
-  char* charBuffer;
-  DOMCharacterData* textData;
-  string returnString;
-  DOMElement* child = _thisFunctionElement->getFirstElementChild();
-  if (child ==NULL){ //not containing any child, return string
-
-    textData = ( DOMCharacterData*) _thisFunctionElement->getFirstChild();
-    if (textData){
-      charBuffer = XMLString::transcode(textData->getData());
-      returnString = string(charBuffer);
-      XMLString::release(&charBuffer);
-    } else returnString = "";
-
-    return returnString;
-  }
-
-  //contain function!
-  XMLCh tempStr[3] = {chLatin_L, chLatin_S, chNull};
-  DOMImplementation *impl          = DOMImplementationRegistry::getDOMImplementation(tempStr);
-  DOMLSSerializer   *theSerializer = ((DOMImplementationLS*)impl)->createLSSerializer();
-  XMLCh* bla = theSerializer->writeToString (child);
-  returnString = XMLString::transcode(bla);
-  XMLString::release(&bla);
-  delete theSerializer;
-  return returnString;
+        ui->fibEdit->setText(nextChildInner(r));
+    }
+    //not work: Decay
 }
 
 void FunctionGenerator::handleFunctionChanged(int index)

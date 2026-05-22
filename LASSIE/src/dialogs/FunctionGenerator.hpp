@@ -40,7 +40,6 @@ public:
     QString result;
     // Returns the result string
     QString getResultString();
-    std::string static getFunctionString(DOMElement* _thisFunctionElement);
     // Changes the combo box to the right type
     void handleFunctionChanged(int index);
 
