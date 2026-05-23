@@ -122,42 +122,32 @@ int PieceHelper::getSeedNumber(string seed) {
 //----------------------------------------------------------------------------//
 
 void PieceHelper::createSoundFilesDirectory(string path) {
-  string dir = string(path);
-  vector<string> files = vector<string>();
-  getDirectoryList(dir, files);
-  string g = "";
-  for(unsigned int i = 0; i < files.size(); i++) {
-    if(files[i] == "SoundFiles")
-      return;
+  std::error_code ec;
+  // create_directory is a no-op if the directory already exists, so the
+  // previous "list, then mkdir if missing" dance is unnecessary.
+  std::filesystem::create_directory(path + "SoundFiles", ec);
+  if (ec) {
+    cout << "Error creating SoundFiles directory: " << ec.message() << endl;
   }
-
-  string h = "mkdir " + path + "SoundFiles";
-  system(h.c_str());
-
 }
 
 //----------------------------------------------------------------------------//
 
 void PieceHelper::createScoreFilesDirectory(string path) {
-
-  string dir = string(path);
-  vector<string> files = vector<string>();
-  getDirectoryList(dir, files);
-  string g = "";
-  bool dirExists = false;
-  for(unsigned int i = 0; i < files.size(); i++) {
-    if(files[i] == "ScoreFiles") {
-      dirExists = true;
-      break;
-    }
+  std::error_code ec;
+  std::filesystem::path scoreDir = std::filesystem::path(path) / "ScoreFiles";
+  std::filesystem::create_directory(scoreDir, ec);
+  if (ec) {
+    cout << "Error creating ScoreFiles directory: " << ec.message() << endl;
+    return;
   }
 
-  string h = "mkdir " + path + "ScoreFiles";
-  if(!dirExists)
-    system(h.c_str());
-  h = "rm -f " + path + "ScoreFiles/*.fms";
-  system(h.c_str());
-
+  // Clean stale .fms files (was "rm -f .../ScoreFiles/*.fms" via the shell).
+  for (const auto& entry : std::filesystem::directory_iterator(scoreDir, ec)) {
+    if (entry.path().extension() == ".fms") {
+      std::filesystem::remove(entry.path(), ec);
+    }
+  }
 }
 
 //----------------------------------------------------------------------------//
