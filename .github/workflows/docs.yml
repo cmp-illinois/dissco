@@ -1,0 +1,102 @@
+name: Docs
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Only one Pages deploy at a time; let in-progress runs finish so we don't
+# interrupt a deploy mid-upload.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build Doxygen
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Doxygen and Graphviz
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y doxygen graphviz
+
+      - name: Build docs
+        run: |
+          set -euo pipefail
+          mkdir -p site/LASSIE site/CMOD site/LASS
+
+          run_doxygen () {
+            local input=$1 out=$2 name=$3 brief=$4
+            ( cat Doxyfile
+              echo
+              echo "INPUT = $input"
+              echo "OUTPUT_DIRECTORY = ./site/$out"
+              echo "PROJECT_NAME = \"$name\""
+              echo "PROJECT_BRIEF = \"$brief\""
+              echo "HAVE_DOT = YES"
+            ) | doxygen -
+          }
+
+          run_doxygen LASSIE/src LASSIE "DISSCO :: LASSIE" "Composition environment GUI for CMOD"
+          run_doxygen CMOD/src   CMOD   "DISSCO :: CMOD"   "Composition module — stochastic event generator"
+          run_doxygen LASS/src   LASS   "DISSCO :: LASS"   "Library of Audio Sound Synthesis"
+
+      - name: Write landing page
+        run: |
+          cat > site/index.html <<'HTML'
+          <!doctype html>
+          <html lang="en">
+          <head>
+            <meta charset="utf-8">
+            <title>DISSCO Doxygen</title>
+            <style>
+              body { font-family: system-ui, sans-serif; max-width: 40rem;
+                     margin: 4rem auto; padding: 0 1rem; line-height: 1.5; }
+              h1 { margin-bottom: 0.25rem; }
+              p.tag { color: #555; margin-top: 0; }
+              ul { list-style: none; padding: 0; }
+              li { margin: 0.75rem 0; }
+              a { font-weight: 600; }
+              code { background: #f3f3f3; padding: 0 0.25em; border-radius: 3px; }
+            </style>
+          </head>
+          <body>
+            <h1>DISSCO</h1>
+            <p class="tag">Digital Instrument for Sound Synthesis and Composition</p>
+            <p>API documentation, generated from source with Doxygen.</p>
+            <ul>
+              <li><a href="LASSIE/html/index.html">LASSIE</a> —
+                  composition environment GUI</li>
+              <li><a href="CMOD/html/index.html">CMOD</a> —
+                  composition module (stochastic event generator)</li>
+              <li><a href="LASS/html/index.html">LASS</a> —
+                  library of audio sound synthesis</li>
+            </ul>
+          </body>
+          </html>
+          HTML
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    name: Deploy to Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
