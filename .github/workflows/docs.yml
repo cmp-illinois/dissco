@@ -4,12 +4,31 @@ on:
   push:
     branches: [main]
     tags: ['v*']
-    # Only rebuild when something the docs actually depend on changes —
+    # Only rebuild when something actually changes —
     # source under the three subprojects, the Doxyfile, or this workflow.
     paths:
-      - 'CMOD/**'
-      - 'LASS/**'
-      - 'LASSIE/**'
+      - 'CMOD/**/*.cpp'
+      - 'CMOD/**/*.hpp'
+      - 'CMOD/**/*.h'
+      - 'LASS/**/*.cpp'
+      - 'LASS/**/*.hpp'
+      - 'LASS/**/*.h'
+      - 'LASSIE/**/*.cpp'
+      - 'LASSIE/**/*.hpp'
+      - 'LASSIE/**/*.h'
+      - 'Doxyfile'
+      - '.github/workflows/docs.yml'
+  pull_request:
+    paths:
+      - 'CMOD/**/*.cpp'
+      - 'CMOD/**/*.hpp'
+      - 'CMOD/**/*.h'
+      - 'LASS/**/*.cpp'
+      - 'LASS/**/*.hpp'
+      - 'LASS/**/*.h'
+      - 'LASSIE/**/*.cpp'
+      - 'LASSIE/**/*.hpp'
+      - 'LASSIE/**/*.h'
       - 'Doxyfile'
       - '.github/workflows/docs.yml'
   workflow_dispatch:
@@ -17,12 +36,10 @@ on:
 permissions:
   contents: write   # peaceiris/actions-gh-pages pushes to the gh-pages branch.
 
-# Serialize runs so two pushes can't race and overwrite each other's
-# top-level index. Don't cancel in-progress runs — that would leave a
-# half-published version subdir.
+# PRs get their own cancellable group; push runs serialize to avoid races.
 concurrency:
-  group: docs-pages
-  cancel-in-progress: false
+  group: ${{ github.event_name == 'pull_request' && format('docs-pr-{0}', github.head_ref) || 'docs-pages' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   build:
@@ -108,6 +125,7 @@ jobs:
           HTML
 
       - name: Assemble publish tree
+        if: github.event_name != 'pull_request'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TARGET:   ${{ steps.target.outputs.dir }}
@@ -213,6 +231,7 @@ jobs:
           } > publish/index.html
 
       - name: Publish to gh-pages
+        if: github.event_name != 'pull_request'
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
