@@ -68,14 +68,15 @@ Utilities::Utilities(pugi::xml_node root,
   pugi::xml_node envelopeLibraryElement = GNES(GNES(GFEC(root)));
   string envLibContent = XMLTranscode(envelopeLibraryElement);
   string fileString = "lib.temp";
-  FILE* file  = fopen(fileString.c_str(), "w");
-  fputs (envLibContent.c_str(), file);
-  fclose(file);
+  {
+    std::ofstream file(fileString);
+    file << envLibContent;
+  }
 
   envelopeLibrary = new EnvelopeLibrary();
   envelopeLibrary->loadLibraryNewFormat((char*)fileString.c_str());
-  string deleteCommand = "rm " + fileString;
-  system(deleteCommand.c_str());
+  std::error_code rmEc;
+  std::filesystem::remove(fileString, rmEc);
 
   // Construct Markov Model Library
   pugi::xml_node markovModelLibraryElement = GNES(envelopeLibraryElement);
