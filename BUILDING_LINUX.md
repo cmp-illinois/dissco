@@ -4,30 +4,31 @@ Building on Linux
 Preliminary Requirements
 --------------------------
 
-The following are *necessary* to compile CMOD and LASS:
+The following are *necessary* to compile anything:
 
 - git
 - A C++17-supporting compiler (g++, clang),
-- A C compiler (gcc ...),
-- cmake >= 3.5,
-- libsndfile >= 1.0,
-- libxerces-c >= 3.2, and
-<!-- - muparser >= 2.X -->
+- A C compiler (gcc ...), and
+- cmake >= 3.25
 
+To compile LASS:
+
+- libsndfile >= 1.0,
+
+To compile CMOD:
+- muparser >= 2.X, and
+- pugixml >= 1.15
+
+> *Note*: the source code for both of these parsers are included in this repo, so you don't need to download them.
 <!-- Keeping for reference, but not relevant to current development -->
 <!-- To compile with LASSIE, the following couple are *necessary* inclusions:
 
 - GTK+ 2.4 < 3.24 (developers: also should be updated!) and
 - GTKmm-2.4 >= 1.5. -->
 
-To compile with LASSIE, the following is *necessary*:
+To compile LASSIE:
 
 - Qt >= 6.8
-
-Recommended
------------
-
-LASSIE will want to open up a terminal, either gnome-terminal or xterm, to provide an interactive view of CMOD running your program. One of these is likely installed already if you're using a desktop environment. Otherwise, install one or the other, or both. *Note that LASSIE is an X application.*
 
 Installing requirements and recommendations on:
 -----------------------------------------------
@@ -35,7 +36,7 @@ Installing requirements and recommendations on:
 ### Debian-likes
 Install the following:
 
-    sudo apt install build-essential libsndfile1 libsndfile1-dev libxerces-c3.2 libxerces-c-dev qt6-base-dev
+    sudo apt install build-essential libsndfile1 libsndfile1-dev qt6-base-dev
 
 `build-essential` includes `g++` and `gcc`. If you prefer another C/C++ compiler, you can install separately.
 
@@ -85,6 +86,6 @@ From the project root:
     cmake --build build --parallel
     QMAKE=/usr/lib/qt6/bin/qmake6 cmake --build build --target appimage
 
-This produces `build/DISSCO-<version>-Linux-<arch>.AppImage` — a self-contained executable with Qt, libsndfile, libxerces-c, and CMOD bundled in. It runs on most modern Linux distros without further installation.
+This produces `build/DISSCO-<version>-Linux-<arch>.AppImage` — a self-contained executable with Qt, libsndfile, and CMOD bundled in. It runs on most modern Linux distros without further installation.
 
 The first invocation downloads `linuxdeploy` and `linuxdeploy-plugin-qt` into `build/.linuxdeploy/`. The icon (`packaging/linux/LASSIE.png`) is a placeholder; replace it with real artwork before cutting a release.

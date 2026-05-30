@@ -4,16 +4,29 @@ Building on macOS
 Preliminary Requirements
 --------------------------
 
-The following are *necessary* to compile CMOD and LASS:
+The following are *necessary* to compile anything:
 
 - git
-- A C++17-supporting compiler (g++, clang++),
-- A C compiler (gcc, clang),
-- cmake >= 3.25,
-- libsndfile >= 1.0,
-- libxerces-c >= 3.2, and
+- A C++17-supporting compiler (g++, clang),
+- A C compiler (gcc ...), and
+- cmake >= 3.25
 
-To compile with LASSIE, the following is *necessary*:
+To compile LASS:
+
+- libsndfile >= 1.0,
+
+To compile CMOD:
+- muparser >= 2.X, and
+- pugixml >= 1.15
+
+> *Note*: the source code for both of these parsers are included in this repo, so you don't need to download them.
+<!-- Keeping for reference, but not relevant to current development -->
+<!-- To compile with LASSIE, the following couple are *necessary* inclusions:
+
+- GTK+ 2.4 < 3.24 (developers: also should be updated!) and
+- GTKmm-2.4 >= 1.5. -->
+
+To compile LASSIE:
 
 - Qt >= 6.8
  
@@ -25,12 +38,12 @@ Installing requirements and recommendations:
 ### brew
 `brew`, or homebrew, is something like a package manager for macOS. It's widely used and tends to have better maintained packages than the equivalent ports on MacPorts. Read more and acquire it at [https://brew.sh](https://brew.sh). Simply:
 
-    $ brew install libsndfile xerces-c qt@6
+    $ brew install libsndfile qt@6
 
 ### port
 `port`, or MacPorts, is something like BSD ports for macOS. It's widely used, but less so than Homebrew. Read more and acquire it at [https://macports.org](https://macports.org). Simply, with `sudo`/root:
 
-    # port install libsndfile xercesc3 qt6
+    # port install libsndfile qt6
 
 For ARM Macs, `brew` will install in `/opt/homebrew/Cellar/[your stuff here]` and symlink to `/opt/homebrew/opt/[your stuff here]`, and for Intel/x86 Macs, `brew` will install in `/usr/local/bin/[your stuff here]`.
 
