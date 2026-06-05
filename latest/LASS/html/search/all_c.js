@@ -21,7 +21,7 @@ var searchData=
   ['multipan_2ecpp_18',['MultiPan.cpp',['../MultiPan_8cpp.html',1,'']]],
   ['multipan_2eh_19',['MultiPan.h',['../MultiPan_8h.html',1,'']]],
   ['multiply_20',['multiply',['../classEnvelope.html#ad3a5b6b946a217e74060de794cca6f30',1,'Envelope']]],
-  ['multitrack_21',['multitrack',['../classMultiTrack.html#a619d20f37ac268e8a5d124dcf5e5f641',1,'MultiTrack::MultiTrack(MultiTrack &amp;mt)'],['../classMultiTrack.html#a563b4432960a22abd7da11c2ebdf3da1',1,'MultiTrack::MultiTrack(int channels, m_sample_count_type numSamples, m_rate_type samplingRate)'],['../classMultiTrack.html#a6b7b95de0cb774045f0bae131f3a7ba9',1,'MultiTrack::MultiTrack()'],['../classMultiTrack.html',1,'MultiTrack']]],
+  ['multitrack_21',['multitrack',['../classMultiTrack.html#ae15c4938ae6b6a4be1cc0d13d5e73375',1,'MultiTrack::MultiTrack(const MultiTrack &amp;mt)'],['../classMultiTrack.html#a563b4432960a22abd7da11c2ebdf3da1',1,'MultiTrack::MultiTrack(int channels, m_sample_count_type numSamples, m_rate_type samplingRate)'],['../classMultiTrack.html#a6b7b95de0cb774045f0bae131f3a7ba9',1,'MultiTrack::MultiTrack()'],['../classMultiTrack.html',1,'MultiTrack']]],
   ['multitrack_2ecpp_22',['MultiTrack.cpp',['../MultiTrack_8cpp.html',1,'']]],
   ['multitrack_2eh_23',['MultiTrack.h',['../MultiTrack_8h.html',1,'']]],
   ['mutexsoundvector_24',['mutexSoundVector',['../structThreadEntry.html#ade1422753ada09dbcb904599abc6029f',1,'ThreadEntry']]]

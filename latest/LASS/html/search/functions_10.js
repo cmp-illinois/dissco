@@ -34,7 +34,7 @@ var searchData=
   ['setvalue_31',['setValue',['../classConstant.html#a72ebc784244b5958b15bc805b707a284',1,'Constant']]],
   ['showdetune_32',['showDetune',['../classSound.html#a0aada32aab01f8eeb22a0c3b42b7c526',1,'Sound']]],
   ['showenvelope_33',['showEnvelope',['../classEnvelopeLibrary.html#a10c4e5568643dc9c0cfadfee29eec6f9',1,'EnvelopeLibrary']]],
-  ['size_34',['size',['../classCollection.html#ae169d364f128bc873207540019978cad',1,'Collection::size()'],['../classEnvelopeLibrary.html#aee38f438ecd706a6aea46710f782f9d5',1,'EnvelopeLibrary::size()']]],
+  ['size_34',['size',['../classCollection.html#ae169d364f128bc873207540019978cad',1,'Collection::size()'],['../classCollection.html#adf21c40a8d33bc7ccabe0fdb098690df',1,'Collection::size() const'],['../classEnvelopeLibrary.html#aee38f438ecd706a6aea46710f782f9d5',1,'EnvelopeLibrary::size()']]],
   ['sortcollection_35',['sortCollection',['../classCollection.html#a0831c13e58c5034811a0714e79e73c38',1,'Collection']]],
   ['sound_36',['sound',['../classSound.html#a539c205cdf06fe2c621fd77c37bcfac9',1,'Sound::Sound()'],['../classSound.html#aa26d7b97123cab409cad4c34c1bf4706',1,'Sound::Sound(int numPartials, m_value_type baseFreq)']]],
   ['soundsample_37',['soundsample',['../classSoundSample.html#afac3bd89adf1afa5c3d22c873cdf302e',1,'SoundSample::SoundSample(m_sample_count_type sampleCount, m_rate_type samplingRate=DEFAULT_SAMPLING_RATE, bool zeroData=false)'],['../classSoundSample.html#a525ed84a94fc56aee737b675383f4077',1,'SoundSample::SoundSample(const SoundSample &amp;ss)']]],
