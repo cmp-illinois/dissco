@@ -61,7 +61,7 @@ typedef struct Tempo Tempo;
 struct Tempo {
     unsigned method_flag = 0; // true = as fraction, false = as note value
     QString prefix; /* both */
-    QString note_value = "quarter"; /* both */
+    QString note_value = "2"; /* both */ //quarter
     QString frentry_1; /* as fraction */
     QString frentry_2; /* as fraction */
     QString valentry = "60"; /* as note */
@@ -228,7 +228,7 @@ struct HEvent {
     Tempo tempo;
     NumChildren numchildren;
     ChildDef child_event_def;
-    QList<Layer> event_layers = { Layer() }; //
+    QList<Layer> event_layers = { Layer() }; //one default layer
     QString spa;
     QString reverb;
     QString filter;
