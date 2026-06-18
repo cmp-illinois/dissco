@@ -268,9 +268,6 @@ m_sample_type Reverb::do_reverb(m_sample_type x_t, float x_value)
 m_sample_type Reverb::do_reverb(m_sample_type x_t, float x_value, Envelope *percentReverbinput)
 {
   m_sample_type y;
-  Envelope* temp = new Envelope(*percentReverbinput);
-  delete percentReverb;
-  percentReverb = temp;
 
   // run the sample through various comb filters (for effeciency
   // reasons, I hard coded this (instead of looping from 0 to
@@ -286,8 +283,8 @@ m_sample_type Reverb::do_reverb(m_sample_type x_t, float x_value, Envelope *perc
   // after adding up the results, run it through an allpass filter
   y = apfilter->do_filter(y);
   // Mix it with the input sound
-  float durationofEnv = percentReverb->getDuration();
-  float EnvelopeValueAtx = percentReverb->getValue(x_value,durationofEnv);
+  float durationofEnv = percentReverbinput->getDuration();
+  float EnvelopeValueAtx = percentReverbinput->getValue(x_value,durationofEnv);
   y = (EnvelopeValueAtx*y) + ((1 - EnvelopeValueAtx)*x_t);
   return y;
 }
