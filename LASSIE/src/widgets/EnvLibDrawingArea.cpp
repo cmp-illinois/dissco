@@ -160,7 +160,8 @@ void EnvLibDrawingArea::adjustBoundary(EnvelopeLibraryEntry* _envelope)
     }
 
     // Fixed 0-4 range (Y is capped at 4)
-    upperY = 4.0;
+    //upperY = 4.0;
+    upperY = 1.0; // 0-1 range
     lowerY = 0.0;
 
     // Update boundary display
@@ -189,11 +190,12 @@ void EnvLibDrawingArea::paintEvent(QPaintEvent* event)
     QPen gridPen(QColor(220,220,220));
     gridPen.setStyle(Qt::DashLine);
     painter.setPen(gridPen);
-    // Y-axis: 4 lines at 1.0, 2.0, 3.0 (each = 25% of height)
+    // Y-axis: lines every 0.25 (4 intervals)
     for (int i = 1; i < 4; ++i) {
         int y = h - i * h / 4;
         painter.drawLine(0, y, w, y);
     }
+
     // X-axis: lines every 0.2 (5 intervals)
     for (int i = 1; i < 5; ++i) {
         int x = i * w / 5;
@@ -209,7 +211,8 @@ void EnvLibDrawingArea::paintEvent(QPaintEvent* event)
     // Y-axis labels along left edge at each grid line (skip 0, shown by X-axis)
     for (int i = 1; i <= 4; ++i) {
         int y = h - i * h / 4;
-        painter.drawText(3, y - 3, QString::number(i));
+        QString label = QString::number(i * 0.25, 'f', 2);
+        painter.drawText(3, y - 3, label);
     }
     // X-axis labels along bottom at each grid line
     for (int i = 0; i <= 5; ++i) {
