@@ -51,6 +51,7 @@ namespace PVCHelper {
         auto* typeItem = new QStandardItem(type);
         auto* nameItem = new QStandardItem(name);
         typeItem->setFlags(typeItem->flags() & ~Qt::ItemIsEditable);
+        nameItem->setFlags(nameItem->flags() & ~Qt::ItemIsEditable);
         typeItem->setData(type, Qt::UserRole + 1);
         typeItem->setData(name, Qt::UserRole + 2);
         nameItem->setData(type, Qt::UserRole + 1);
