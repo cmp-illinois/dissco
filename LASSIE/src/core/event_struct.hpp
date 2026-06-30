@@ -53,18 +53,18 @@ typedef enum {
 
 typedef struct TimeSignature TimeSignature;
 struct TimeSignature {
-    QString bar_value = "4";
-    QString note_value = "4";
+    QString bar_value;
+    QString note_value;
 };
 
 typedef struct Tempo Tempo;
 struct Tempo {
     unsigned method_flag = 0; // true = as fraction, false = as note value
     QString prefix; /* both */
-    QString note_value = "quarter"; /* both */
+    QString note_value; /* both */
     QString frentry_1; /* as fraction */
     QString frentry_2; /* as fraction */
-    QString valentry = "60"; /* as note */
+    QString valentry; /* as note */
 };
 
 /*
@@ -223,12 +223,12 @@ struct HEvent {
     Eventtype type = Eventtype::top;
     QString name;
     QString max_child_duration;
-    QString edu_perbeat = "60";
+    QString edu_perbeat;
     TimeSignature timesig;
     Tempo tempo;
     NumChildren numchildren;
     ChildDef child_event_def;
-    QList<Layer> event_layers = { Layer() }; //
+    QList<Layer> event_layers; //
     QString spa;
     QString reverb;
     QString filter;
