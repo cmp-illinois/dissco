@@ -34,22 +34,34 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "Utilities.h"
 #include <fstream>
 
+#ifdef _WIN32
+#undef SIZE
+#define WIN32_LEAN_AND_MEAN
+#define NOGDI
+#define NOMINMAX
+#include <windows.h>
+#include <vector>
+#else
+#include <cstdlib>
+#endif
+
 //----------------------------------------------------------------------------//
 
 int PieceHelper::getDirectoryList(string dir, vector<string> &files) {
-  DIR *dp;
-  struct dirent *dirp;
-  if((dp  = opendir(dir.c_str())) == NULL) {
-    cout << "Error(" << errno << ") opening " << dir << endl;
-    return errno;
+  std::error_code ec;
+  std::filesystem::directory_iterator it(dir, ec);
+  if (ec) {
+    cout << "Error(" << ec.value() << ") opening " << dir << ": "
+         << ec.message() << endl;
+    return ec.value();
   }
 
-  while ((dirp = readdir(dp)) != NULL) {
-    files.push_back(string(dirp->d_name));
+  // Note: directory_iterator skips "." and ".." automatically, unlike the
+  // POSIX readdir() loop this replaced (which leaked them into the result).
+  for (const auto& entry : it) {
+    files.push_back(entry.path().filename().string());
   }
-  closedir(dp);
   return 0;
-
 }
 
 //----------------------------------------------------------------------------//
@@ -120,42 +132,32 @@ int PieceHelper::getSeedNumber(string seed) {
 //----------------------------------------------------------------------------//
 
 void PieceHelper::createSoundFilesDirectory(string path) {
-  string dir = string(path);
-  vector<string> files = vector<string>();
-  getDirectoryList(dir, files);
-  string g = "";
-  for(unsigned int i = 0; i < files.size(); i++) {
-    if(files[i] == "SoundFiles")
-      return;
+  std::error_code ec;
+  // create_directory is a no-op if the directory already exists, so the
+  // previous "list, then mkdir if missing" dance is unnecessary.
+  std::filesystem::create_directory(path + "SoundFiles", ec);
+  if (ec) {
+    cout << "Error creating SoundFiles directory: " << ec.message() << endl;
   }
-
-  string h = "mkdir " + path + "SoundFiles";
-  system(h.c_str());
-
 }
 
 //----------------------------------------------------------------------------//
 
 void PieceHelper::createScoreFilesDirectory(string path) {
-
-  string dir = string(path);
-  vector<string> files = vector<string>();
-  getDirectoryList(dir, files);
-  string g = "";
-  bool dirExists = false;
-  for(unsigned int i = 0; i < files.size(); i++) {
-    if(files[i] == "ScoreFiles") {
-      dirExists = true;
-      break;
-    }
+  std::error_code ec;
+  std::filesystem::path scoreDir = std::filesystem::path(path) / "ScoreFiles";
+  std::filesystem::create_directory(scoreDir, ec);
+  if (ec) {
+    cout << "Error creating ScoreFiles directory: " << ec.message() << endl;
+    return;
   }
 
-  string h = "mkdir " + path + "ScoreFiles";
-  if(!dirExists)
-    system(h.c_str());
-  h = "rm -f " + path + "ScoreFiles/*.fms";
-  system(h.c_str());
-
+  // Clean stale .fms files (was "rm -f .../ScoreFiles/*.fms" via the shell).
+  for (const auto& entry : std::filesystem::directory_iterator(scoreDir, ec)) {
+    if (entry.path().extension() == ".fms") {
+      std::filesystem::remove(entry.path(), ec);
+    }
+  }
 }
 
 //----------------------------------------------------------------------------//
@@ -221,7 +223,12 @@ Piece::Piece(string _workingPath, string _projectTitle){
   path = _workingPath;
   projectName = _projectTitle;
   //Change working directory.
-  chdir(_workingPath.c_str());
+  std::error_code chdirEc;
+  std::filesystem::current_path(_workingPath, chdirEc);
+  if (chdirEc) {
+    cout << "Error changing working directory to " << _workingPath
+         << ": " << chdirEc.message() << endl;
+  }
 
   //Parse .dissco File
   pugi::xml_document disscoDoc;
@@ -366,7 +373,49 @@ Piece::Piece(string _workingPath, string _projectTitle){
     score_file.close();
 
     // execute lilypond to create pdf file
-    system(("lilypond " + projectName + ".ly").c_str());
+    {
+      std::string lilypondCmd = "lilypond " + projectName + ".ly";
+#ifdef _WIN32
+      // Use the native CreateProcess API instead of system() so we avoid
+      // launching cmd.exe just to parse the command line.
+      //
+      // We resolve lilypond.exe via PATH ourselves rather than letting
+      // CreateProcess do it from a NULL lpApplicationName. With NULL,
+      // CreateProcess's search order includes the parent's current
+      // directory (which we just chdir'd to a user-controlled project
+      // path), so an attacker could drop a lilypond.exe next to the
+      // .dissco file and have it execute. SearchPath under safe-search
+      // mode moves CWD to the end of the lookup list, and passing the
+      // resolved absolute path as lpApplicationName removes the parsing
+      // ambiguity entirely. If the binary can't be found we fail closed.
+      SetSearchPathMode(BASE_SEARCH_PATH_ENABLE_SAFE_SEARCHMODE |
+                        BASE_SEARCH_PATH_PERMANENT);
+      char resolvedPath[MAX_PATH];
+      DWORD resolvedLen = SearchPathA(nullptr, "lilypond", ".exe",
+                                      MAX_PATH, resolvedPath, nullptr);
+      if (resolvedLen == 0 || resolvedLen >= MAX_PATH) {
+        cout << "Could not locate lilypond.exe on PATH (Win32 error "
+             << GetLastError() << ")" << endl;
+      } else {
+        STARTUPINFOA si{};
+        PROCESS_INFORMATION pi{};
+        si.cb = sizeof(si);
+        std::vector<char> mutableCmd(lilypondCmd.begin(), lilypondCmd.end());
+        mutableCmd.push_back('\0');
+        if (CreateProcessA(resolvedPath, mutableCmd.data(), nullptr, nullptr,
+                           FALSE, 0, nullptr, nullptr, &si, &pi)) {
+          WaitForSingleObject(pi.hProcess, INFINITE);
+          CloseHandle(pi.hProcess);
+          CloseHandle(pi.hThread);
+        } else {
+          cout << "Failed to launch " << resolvedPath << " (Win32 error "
+               << GetLastError() << ")" << endl;
+        }
+      }
+#else
+      std::system(lilypondCmd.c_str());
+#endif
+    }
 
     // generating score files with different suffixes instead of replacing the older files.
     int suffix_rank = 0;
@@ -380,7 +429,14 @@ Piece::Piece(string _workingPath, string _projectTitle){
       suffix_rank++;
     }
 
-    system(("mv " + projectName + ".pdf " + "ScoreFiles/" + projectName + suffix + ".pdf").c_str());
+    std::error_code mvEc;
+    std::filesystem::rename(projectName + ".pdf",
+                            "ScoreFiles/" + projectName + suffix + ".pdf",
+                            mvEc);
+    if (mvEc) {
+      cout << "Error moving " << projectName << ".pdf into ScoreFiles/: "
+           << mvEc.message() << endl;
+    }
 
   }
 

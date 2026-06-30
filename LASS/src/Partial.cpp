@@ -33,6 +33,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "Track.h"
 #include "Iterator.h"
 
+#ifndef M_PI
+#define M_PI		3.14159265358979323846
+#endif
+
 //----------------------------------------------------------------------------//
 Partial::Partial()
 {
@@ -509,7 +513,7 @@ void Partial::xml_print( ofstream& xmlOutput, list<Reverb*>& revObjs, list<Dynam
 	xmlOutput << "\t\t</partial>" << endl;
 }
 
-void Partial::xml_read(XmlReader::xmltag* partialtag, DISSCO_HASHMAP<long, Reverb *>* reverbHash, DISSCO_HASHMAP<long, DynamicVariable *> *dvHash)
+void Partial::xml_read(XmlReader::xmltag* partialtag, unordered_map<long, Reverb *>* reverbHash, unordered_map<long, DynamicVariable *> *dvHash)
 {
 	if(strcmp("partial",partialtag->name))
 	{
@@ -576,7 +580,7 @@ void Partial::xml_read(XmlReader::xmltag* partialtag, DISSCO_HASHMAP<long, Rever
 	}
 }
 
-void Partial::auxLoadParam(enum PartialDynamicParam param,XmlReader::xmltag *tag, DISSCO_HASHMAP<long, DynamicVariable *> *dvHash)
+void Partial::auxLoadParam(enum PartialDynamicParam param,XmlReader::xmltag *tag, unordered_map<long, DynamicVariable *> *dvHash)
 {
 	char *value;
 
